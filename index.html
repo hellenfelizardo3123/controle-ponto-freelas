@@ -29,6 +29,8 @@ select, input[type=text] { width: 100%; padding: 12px; font-size: 16px; border-r
 <h1>Controle de ponto</h1>
 <div class="loja" id="nomeLoja">-</div>
 
+<div id="mensagem"></div>
+
 <div id="formulario">
 <label for="nome">Seu nome</label>
 <select id="nome">
@@ -49,7 +51,6 @@ select, input[type=text] { width: 100%; padding: 12px; font-size: 16px; border-r
 </div>
 
 <button class="registrar-btn" id="btnRegistrar" disabled>Registrar</button>
-<div id="mensagem"></div>
 </div>
 
 <div class="historico" id="historico">Carregando ultimos registros...</div>
@@ -163,29 +164,28 @@ async function carregarHistorico() {
 const btnRegistrar = document.getElementById("btnRegistrar");
 btnRegistrar.addEventListener("click", async () => {
   const nome = nomeAtual();
-  const msg = document.getElementById("mensagem");
   if (!nome) {
-    msg.innerHTML = "<div class='mensagem erro'>Escolha ou digite seu nome.</div>";
+    mensagemEl.innerHTML = "<div class='mensagem erro'>Escolha ou digite seu nome.</div>";
     return;
   }
   if (!tipoSelecionado) {
-    msg.innerHTML = "<div class='mensagem erro'>Escolha o que esta registrando.</div>";
+    mensagemEl.innerHTML = "<div class='mensagem erro'>Escolha o que esta registrando.</div>";
     return;
   }
   btnRegistrar.disabled = true;
-  msg.innerHTML = "<div class='mensagem'>Registrando...</div>";
+  mensagemEl.innerHTML = "<div class='mensagem'>Registrando...</div>";
   const { error } = await sb.from("registros_ponto").insert({
     nome: nome,
     tipo: tipoSelecionado,
     loja: lojas[codigoLoja]
   });
   if (error) {
-    msg.innerHTML = "<div class='mensagem erro'>Nao foi possivel registrar. Tente novamente. (" + error.message + ")</div>";
+    mensagemEl.innerHTML = "<div class='mensagem erro'>Nao foi possivel registrar. Tente novamente. (" + error.message + ")</div>";
     btnRegistrar.disabled = false;
     return;
   }
   const agora = new Date();
-  msg.innerHTML = "<div class='mensagem ok'>Registrado: " + nome + " - " + tipoSelecionado + " as " + agora.toLocaleString("pt-BR") + "</div>";
+  mensagemEl.innerHTML = "<div class='mensagem ok'>Registrado: " + nome + " - " + tipoSelecionado + " as " + agora.toLocaleString("pt-BR") + "</div>";
   btnRegistrar.disabled = false;
   carregarHistorico();
 });
