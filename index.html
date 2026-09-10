@@ -87,6 +87,33 @@ const lojaValida = !!codigoLoja && !!lojas[codigoLoja];
 const codigoEsperado = codigoDoCiclo(cicloAtual());
 const codigoValido = codigoUrl === codigoEsperado;
 
+// --- impedir lancar a mesma batida de novo so de atualizar a pagina (F5) ---
+const ESPERA_MS = 5 * 60 * 1000; // 5 minutos
+const chaveUltimoRegistro = "pontoUltimoRegistro_" + (codigoLoja || "desconhecida");
+
+function registroRecente() {
+try {
+const salvo = localStorage.getItem(chaveUltimoRegistro);
+if (!salvo) return null;
+const dados = JSON.parse(salvo);
+if (Date.now() - dados.hora < ESPERA_MS) return dados;
+return null;
+} catch (e) {
+return null;
+}
+}
+
+function salvarRegistroRecente(tipo, nome, quandoMs) {
+try {
+localStorage.setItem(chaveUltimoRegistro, JSON.stringify({ tipo: tipo, nome: nome, hora: quandoMs }));
+} catch (e) {}
+}
+
+function mostrarConfirmacao(nome, tipo, quandoMs) {
+formulario.style.display = "none";
+mensagemEl.innerHTML = "<div class='mensagem ok'>Registrado: " + nome + " - " + tipo + " as " + new Date(quandoMs).toLocaleString("pt-BR") + "<br><br>Para registrar de novo, escaneie o QR code novamente.</div>";
+}
+
 if (!lojaValida) {
 nomeLojaEl.textContent = "Link invalido";
 formulario.style.display = "none";
@@ -97,6 +124,10 @@ formulario.style.display = "none";
 mensagemEl.innerHTML = "<div class='mensagem erro'>Este QR code esta desatualizado (o codigo muda toda quarta-feira, por seguranca). Peca o QR code novo desta semana.</div>";
 } else {
 nomeLojaEl.textContent = lojas[codigoLoja];
+const recente = registroRecente();
+if (recente) {
+mostrarConfirmacao(recente.nome, recente.tipo, recente.hora);
+}
 }
 
 const inputNome = document.getElementById("nome");
@@ -139,9 +170,9 @@ mensagemEl.innerHTML = "<div class='mensagem erro'>Nao foi possivel registrar. T
 btnRegistrar.disabled = false;
 return;
 }
-const agora = new Date();
-formulario.style.display = "none";
-mensagemEl.innerHTML = "<div class='mensagem ok'>Registrado: " + nome + " - " + tipoSelecionado + " as " + agora.toLocaleString("pt-BR") + "<br><br>Para registrar de novo, escaneie o QR code novamente.</div>";
+const agora = Date.now();
+salvarRegistroRecente(tipoSelecionado, nome, agora);
+mostrarConfirmacao(nome, tipoSelecionado, agora);
 });
 </script>
 </body>
