@@ -567,9 +567,12 @@ function formatBRL(v){
 return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 function normalizarNome(n){
-return String(n || "").trim().toLowerCase().replace(/\s+/g, " ");
+return String(n || "").trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/\s+/g, " ");
 }
 
+// Tolerante a batida repetida/fora de ordem (ex: alguém tocou duas vezes sem querer):
+// uma batida que não faz sentido no estado atual (ex: 2ª Chegada sem Saída no meio)
+// é simplesmente ignorada, em vez de contar como "incompleta" e bagunçar a conta.
 function calcularPagamentos(lista){
 const porPessoa = new Map();
 const estados = new Map();
@@ -582,23 +585,22 @@ const p = porPessoa.get(chave);
 const st = estados.get(chave);
 const t = new Date(r.criado_em).getTime();
 if (r.tipo === "Chegada"){
-if (st.status !== "fechado") p.incompletos++;
-st.status = "aberto"; st.inicioTurno = t; st.pausaMs = 0;
+if (st.status === "fechado"){ st.status = "aberto"; st.inicioTurno = t; st.pausaMs = 0; }
+// já tinha turno aberto: batida repetida, ignora
 } else if (r.tipo === "Inicio do intervalo"){
 if (st.status === "aberto"){ st.status = "intervalo"; st.inicioIntervalo = t; }
-else { p.incompletos++; }
+// sem turno aberto ou já em intervalo: batida repetida/fora de ordem, ignora
 } else if (r.tipo === "Fim do intervalo"){
 if (st.status === "intervalo"){ st.pausaMs += (t - st.inicioIntervalo); st.status = "aberto"; }
-else { p.incompletos++; }
+// sem intervalo aberto: batida repetida/fora de ordem, ignora
 } else if (r.tipo === "Saida" || r.tipo === "Saída"){
 if (st.status === "aberto" || st.status === "intervalo"){
 const bruto = t - st.inicioTurno;
 const liquido = Math.max(0, bruto - (st.pausaMs || 0));
 p.ms += liquido;
 st.status = "fechado";
-} else {
-p.incompletos++;
 }
+// já estava fechado: Saída repetida, ignora (não conta de novo)
 }
 });
 estados.forEach((st, chave) => {
