@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ponto Cidadão do Mundo</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --bg:#fbf4ec;
+    --surface:#ffffff;
+    --surface-2:#f3e9db;
+    --border:#e9dcc7;
+    --text:#2b2420;
+    --text-muted:#8a7b6c;
+    --accent:#b5461f;
+    --accent-ink:#7a2e13;
+    --accent-soft:#f7e2d6;
+    --good:#2e7d32;
+    --good-soft:#e5f3e6;
+    --amber:#a6660f;
+    --amber-soft:#f6e9d3;
+    --teal:#2e6b6b;
+    --teal-soft:#e1eeee;
+    --shadow: 0 1px 2px rgba(43,36,32,.06), 0 8px 24px -12px rgba(43,36,32,.18);
+    --focus: #7a2e13;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#1c1712;
+      --surface:#251f18;
+      --surface-2:#2f281f;
+      --border:#3c3226;
+      --text:#f2e7d8;
+      --text-muted:#a9998a;
+      --accent:#e0703f;
+      --accent-ink:#f6c8a9;
+      --accent-soft:#3c2419;
+      --good:#7fcf82;
+      --good-soft:#22331f;
+      --amber:#e0a94b;
+      --amber-soft:#3a2e17;
+      --teal:#7fc6c1;
+      --teal-soft:#1c2f2d;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px -12px rgba(0,0,0,.5);
+      --focus: #f6c8a9;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#1c1712;
+    --surface:#251f18;
+    --surface-2:#2f281f;
+    --border:#3c3226;
+    --text:#f2e7d8;
+    --text-muted:#a9998a;
+    --accent:#e0703f;
+    --accent-ink:#f6c8a9;
+    --accent-soft:#3c2419;
+    --good:#7fcf82;
+    --good-soft:#22331f;
+    --amber:#e0a94b;
+    --amber-soft:#3a2e17;
+    --teal:#7fc6c1;
+    --teal-soft:#1c2f2d;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px -12px rgba(0,0,0,.5);
+    --focus: #f6c8a9;
+  }
+
+  *{box-sizing:border-box;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:'Inter',system-ui,sans-serif;
+    margin:0;
+    padding-block:28px;
+    padding-inline:16px;
+  }
+  .wrap{max-width:720px;margin:0 auto;display:flex;flex-direction:column;gap:22px;}
+
+  header{display:flex;flex-direction:column;gap:4px;}
+  .eyebrow{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    color:var(--accent-ink);
+    font-weight:600;
+  }
+  h1{
+    font-family:'Fraunces',Georgia,serif;
+    font-weight:700;
+    font-size:clamp(28px,6vw,34px);
+    margin:0;
+    text-wrap:balance;
+    line-height:1.1;
+  }
+  .sub{color:var(--text-muted);font-size:14px;margin:0;}
+
+  .stats{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(120px,1fr));
+    gap:10px;
+  }
+  .stat{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:14px;
+    padding:14px 16px;
+    box-shadow:var(--shadow);
+    display:flex;
+    flex-direction:column;
+    gap:2px;
+  }
+  .stat .n{
+    font-family:'IBM Plex Mono',monospace;
+    font-variant-numeric:tabular-nums;
+    font-weight:600;
+    font-size:26px;
+    line-height:1;
+  }
+  .stat .l{font-size:12px;color:var(--text-muted);}
+  .stat.total{background:var(--accent);}
+  .stat.total .n, .stat.total .l{color:#fff8f2;}
+
+  .toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}
+  .tabs{display:flex;gap:6px;flex-wrap:wrap;}
+  .tab{
+    font-family:'Inter',sans-serif;
+    font-size:13px;
+    font-weight:600;
+    padding:8px 14px;
+    border-radius:999px;
+    border:1px solid var(--border);
+    background:var(--surface);
+    color:var(--text-muted);
+    cursor:pointer;
+  }
+  .tab[aria-pressed="true"]{
+    background:var(--accent);
+    border-color:var(--accent);
+    color:#fff8f2;
+  }
+  .tab:focus-visible{outline:2px solid var(--focus);outline-offset:2px;}
+
+  .refresh{
+    display:flex;align-items:center;gap:8px;
+    font-size:12px;color:var(--text-muted);
+    font-family:'IBM Plex Mono',monospace;
+  }
+  #btnRefresh{
+    border:1px solid var(--border);
+    background:var(--surface);
+    color:var(--text);
+    border-radius:10px;
+    padding:7px 10px;
+    font-size:13px;
+    font-weight:600;
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    gap:6px;
+    font-family:'Inter',sans-serif;
+  }
+  #btnRefresh:focus-visible{outline:2px solid var(--focus);outline-offset:2px;}
+  #btnRefresh svg{width:14px;height:14px;transition:transform .5s ease;}
+  #btnRefresh.spinning svg{transform:rotate(360deg);}
+  @media (prefers-reduced-motion: reduce){
+    #btnRefresh svg{transition:none;}
+  }
+
+  .day{display:flex;flex-direction:column;gap:8px;}
+  .day-label{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    letter-spacing:.06em;
+    text-transform:uppercase;
+    color:var(--text-muted);
+    padding-left:2px;
+  }
+  .ticket-list{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:16px;
+    box-shadow:var(--shadow);
+    overflow:hidden;
+  }
+  .ticket{
+    display:flex;
+    align-items:center;
+    gap:14px;
+    padding:12px 16px;
+    border-bottom:1px solid var(--border);
+  }
+  .ticket:last-child{border-bottom:none;}
+  .ticket time{
+    font-family:'IBM Plex Mono',monospace;
+    font-variant-numeric:tabular-nums;
+    font-weight:600;
+    font-size:16px;
+    min-width:52px;
+  }
+  .ticket .who{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px;}
+  .ticket .name{font-weight:600;font-size:14px;overflow-wrap:anywhere;}
+  .pill{
+    align-self:flex-start;
+    font-size:11px;
+    font-weight:600;
+    padding:2px 9px;
+    border-radius:999px;
+    letter-spacing:.01em;
+  }
+  .pill.chegada{background:var(--good-soft);color:var(--good);}
+  .pill.saida{background:var(--accent-soft);color:var(--accent-ink);}
+  .pill.inicio{background:var(--amber-soft);color:var(--amber);}
+  .pill.fim{background:var(--teal-soft);color:var(--teal);}
+  .loja-tag{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;
+    color:var(--text-muted);
+    border:1px solid var(--border);
+    border-radius:8px;
+    padding:3px 8px;
+    white-space:nowrap;
+  }
+
+  .empty, .error, .loading{
+    background:var(--surface);
+    border:1px dashed var(--border);
+    border-radius:16px;
+    padding:32px 20px;
+    text-align:center;
+    color:var(--text-muted);
+    font-size:14px;
+  }
+  .error{border-color:var(--accent);color:var(--accent-ink);}
+  .error button{
+    margin-top:10px;
+    border:1px solid var(--accent);
+    background:var(--accent-soft);
+    color:var(--accent-ink);
+    border-radius:10px;
+    padding:7px 14px;
+    font-weight:600;
+    cursor:pointer;
+    font-family:'Inter',sans-serif;
+    font-size:13px;
+  }
+
+  footer{
+    text-align:center;
+    font-size:12px;
+    color:var(--text-muted);
+    padding-top:4px;
+  }
+  footer a{color:var(--text-muted);}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <span class="eyebrow">Cidadão do Mundo Burgers &amp; Arts</span>
+    <h1>Painel de ponto</h1>
+    <p class="sub" id="dataHoje">carregando data…</p>
+  </header>
+
+  <div class="stats" id="stats">
+    <div class="stat total"><span class="n" id="statTotalHoje">–</span><span class="l">registros hoje</span></div>
+    <div class="stat"><span class="n" id="statAguaVerde">–</span><span class="l">Água Verde</span></div>
+    <div class="stat"><span class="n" id="statAhu">–</span><span class="l">Ahú</span></div>
+    <div class="stat"><span class="n" id="statSaoBraz">–</span><span class="l">São Braz</span></div>
+  </div>
+
+  <div class="toolbar">
+    <div class="tabs" id="tabs" role="tablist" aria-label="Filtrar por loja">
+      <button class="tab" id="tabTodas" role="tab" aria-pressed="true" data-loja="">Todas</button>
+      <button class="tab" id="tabAguaVerde" role="tab" aria-pressed="false" data-loja="Agua Verde">Água Verde</button>
+      <button class="tab" id="tabAhu" role="tab" aria-pressed="false" data-loja="Ahu">Ahú</button>
+      <button class="tab" id="tabSaoBraz" role="tab" aria-pressed="false" data-loja="Sao Braz">São Braz</button>
+    </div>
+    <div class="refresh">
+      <span id="atualizadoEm">—</span>
+      <button id="btnRefresh" type="button" aria-label="Atualizar agora">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+        Atualizar
+      </button>
+    </div>
+  </div>
+
+  <div id="conteudo">
+    <div class="loading">Carregando os registros…</div>
+  </div>
+
+  <footer>
+    Dados ao vivo do banco de dados (Supabase). ·
+    <a href="https://supabase.com/dashboard/project/dzgvawxdnjxemifeactr/editor" target="_blank" rel="noopener">Ver tabela completa ↗</a>
+  </footer>
+</div>
+
+<script>
+(function(){
+  const SUPABASE_URL = "https://dzgvawxdnjxemifeactr.supabase.co";
+  const SUPABASE_KEY = "sb_publishable_to-gABecxZny25QLi0OTcQ_HK8nePyG";
+  const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  const LOJAS_ORDEM = ["Agua Verde", "Ahu", "Sao Braz"];
+  const NOME_EXIBICAO = { "Agua Verde": "Água Verde", "Ahu": "Ahú", "Sao Braz": "São Braz" };
+
+  let registros = [];
+  let lojaAtiva = "";
+  let carregouUmaVez = false;
+
+  const elConteudo = document.getElementById("conteudo");
+  const elDataHoje = document.getElementById("dataHoje");
+  const elAtualizadoEm = document.getElementById("atualizadoEm");
+  const btnRefresh = document.getElementById("btnRefresh");
+  const tabs = Array.from(document.querySelectorAll(".tab"));
+
+  function diaBrasilia(isoOuMs){
+    const ms = typeof isoOuMs === "string" ? new Date(isoOuMs).getTime() : isoOuMs;
+    const d = new Date(ms - 3 * 3600 * 1000);
+    return d.getUTCFullYear() + "-" + String(d.getUTCMonth()+1).padStart(2,"0") + "-" + String(d.getUTCDate()).padStart(2,"0");
+  }
+
+  function rotuloDia(diaStr, hojeStr, ontemStr){
+    if (diaStr === hojeStr) return "Hoje";
+    if (diaStr === ontemStr) return "Ontem";
+    const [y,m,d] = diaStr.split("-");
+    return d + "/" + m;
+  }
+
+  function horaBrasilia(iso){
+    return new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" });
+  }
+
+  function classePill(tipo){
+    if (tipo === "Chegada") return "chegada";
+    if (tipo === "Saida" || tipo === "Saída") return "saida";
+    if (tipo === "Inicio do intervalo") return "inicio";
+    if (tipo === "Fim do intervalo") return "fim";
+    return "";
+  }
+
+  function atualizarRelogioTopo(){
+    const agora = new Date();
+    elDataHoje.textContent = agora.toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long", timeZone: "America/Sao_Paulo" });
+  }
+
+  function renderStats(){
+    const hojeStr = diaBrasilia(Date.now());
+    const hojeRegistros = registros.filter(r => diaBrasilia(r.criado_em) === hojeStr);
+    document.getElementById("statTotalHoje").textContent = hojeRegistros.length;
+    document.getElementById("statAguaVerde").textContent = hojeRegistros.filter(r => r.loja === "Agua Verde").length;
+    document.getElementById("statAhu").textContent = hojeRegistros.filter(r => r.loja === "Ahu").length;
+    document.getElementById("statSaoBraz").textContent = hojeRegistros.filter(r => r.loja === "Sao Braz").length;
+  }
+
+  function renderLista(){
+    const filtrados = lojaAtiva ? registros.filter(r => r.loja === lojaAtiva) : registros;
+
+    if (filtrados.length === 0){
+      elConteudo.innerHTML = '<div class="empty">Nenhum registro ainda' + (lojaAtiva ? " em " + NOME_EXIBICAO[lojaAtiva] : "") + '.</div>';
+      return;
+    }
+
+    const hojeStr = diaBrasilia(Date.now());
+    const ontemStr = diaBrasilia(Date.now() - 24*3600*1000);
+
+    const porDia = new Map();
+    filtrados.forEach(r => {
+      const dia = diaBrasilia(r.criado_em);
+      if (!porDia.has(dia)) porDia.set(dia, []);
+      porDia.get(dia).push(r);
+    });
+
+    const diasOrdenados = Array.from(porDia.keys()).sort().reverse();
+
+    let html = "";
+    diasOrdenados.forEach(dia => {
+      html += '<div class="day"><span class="day-label">' + rotuloDia(dia, hojeStr, ontemStr) + '</span><div class="ticket-list">';
+      porDia.get(dia).forEach(r => {
+        const nomeLoja = NOME_EXIBICAO[r.loja] || r.loja;
+        const cls = classePill(r.tipo);
+        html += '<div class="ticket">'
+          + '<time>' + horaBrasilia(r.criado_em) + '</time>'
+          + '<div class="who"><span class="name">' + escapeHtml(r.nome) + '</span>'
+          + '<span class="pill ' + cls + '">' + escapeHtml(r.tipo) + '</span></div>'
+          + (lojaAtiva ? "" : '<span class="loja-tag">' + nomeLoja + '</span>')
+          + '</div>';
+      });
+      html += '</div></div>';
+    });
+
+    elConteudo.innerHTML = html;
+  }
+
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
+  }
+
+  function renderErro(msg){
+    elConteudo.innerHTML = '<div class="error">Não consegui carregar os registros agora.<br>' + escapeHtml(msg || "") + '<br><button id="btnTentarDeNovo" type="button">Tentar de novo</button></div>';
+    const b = document.getElementById("btnTentarDeNovo");
+    if (b) b.addEventListener("click", carregar);
+  }
+
+  async function carregar(silencioso){
+    if (!silencioso || !carregouUmaVez){
+      elConteudo.innerHTML = '<div class="loading">Carregando os registros…</div>';
+    }
+    btnRefresh.classList.add("spinning");
+    try{
+      const { data, error } = await sb
+        .from("registros_ponto")
+        .select("nome, tipo, loja, criado_em")
+        .order("criado_em", { ascending: false })
+        .limit(300);
+      if (error) throw error;
+      registros = data || [];
+      carregouUmaVez = true;
+      renderStats();
+      renderLista();
+      elAtualizadoEm.textContent = "atualizado às " + new Date().toLocaleTimeString("pt-BR", { timeZone: "America/Sao_Paulo" });
+    } catch(e){
+      renderErro(e && e.message ? e.message : "Erro desconhecido.");
+    } finally {
+      setTimeout(() => btnRefresh.classList.remove("spinning"), 500);
+    }
+  }
+
+  tabs.forEach(tab => {
+    tab.addEventListener("click", () => {
+      lojaAtiva = tab.dataset.loja;
+      tabs.forEach(t => t.setAttribute("aria-pressed", t === tab ? "true" : "false"));
+      renderLista();
+    });
+  });
+
+  btnRefresh.addEventListener("click", () => carregar(false));
+
+  atualizarRelogioTopo();
+  carregar(false);
+  setInterval(() => carregar(true), 60000);
+  setInterval(atualizarRelogioTopo, 60000);
+})();
+</script>
+</body>
+</html>
