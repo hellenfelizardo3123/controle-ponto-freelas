@@ -20,8 +20,6 @@ select, input[type=text] { width: 100%; padding: 12px; font-size: 16px; border-r
 .mensagem { margin-top: 16px; padding: 12px; border-radius: 8px; text-align: center; font-weight: bold; }
 .mensagem.ok { background: #e8f5e9; color: #2e7d32; }
 .mensagem.erro { background: #fdecea; color: #b5461f; }
-.historico { margin-top: 24px; font-size: 13px; color: #666; }
-.historico div { padding: 6px 0; border-bottom: 1px solid #eee; }
 </style>
 </head>
 <body>
@@ -45,8 +43,6 @@ select, input[type=text] { width: 100%; padding: 12px; font-size: 16px; border-r
 
 <button class="registrar-btn" id="btnRegistrar" disabled>Registrar</button>
 </div>
-
-<div class="historico" id="historico">Carregando ultimos registros...</div>
 </div>
 
 <script>
@@ -85,7 +81,6 @@ const codigoLoja = params.get("loja");
 const codigoUrl = (params.get("codigo") || "").toLowerCase();
 const nomeLojaEl = document.getElementById("nomeLoja");
 const formulario = document.getElementById("formulario");
-const historicoEl = document.getElementById("historico");
 const mensagemEl = document.getElementById("mensagem");
 
 const lojaValida = !!codigoLoja && !!lojas[codigoLoja];
@@ -95,12 +90,10 @@ const codigoValido = codigoUrl === codigoEsperado;
 if (!lojaValida) {
 nomeLojaEl.textContent = "Link invalido";
 formulario.style.display = "none";
-historicoEl.style.display = "none";
 mensagemEl.innerHTML = "<div class='mensagem erro'>Este link nao tem uma loja valida. Peca o QR code correto para a sua loja.</div>";
 } else if (!codigoValido) {
 nomeLojaEl.textContent = lojas[codigoLoja];
 formulario.style.display = "none";
-historicoEl.style.display = "none";
 mensagemEl.innerHTML = "<div class='mensagem erro'>Este QR code esta desatualizado (o codigo muda toda quarta-feira, por seguranca). Peca o QR code novo desta semana.</div>";
 } else {
 nomeLojaEl.textContent = lojas[codigoLoja];
@@ -121,32 +114,6 @@ document.getElementById("btnRegistrar").disabled = false;
 
 function nomeAtual() {
 return inputNome.value.trim();
-}
-
-function formatarQuando(iso) {
-const d = new Date(iso);
-return d.toLocaleString("pt-BR");
-}
-
-async function carregarHistorico() {
-if (!lojaValida || !codigoValido) return;
-const { data, error } = await sb
-.from("registros_ponto")
-.select("nome, tipo, criado_em")
-.eq("loja", lojas[codigoLoja])
-.order("criado_em", { ascending: false })
-.limit(5);
-if (error) {
-historicoEl.innerHTML = "";
-return;
-}
-if (!data || data.length === 0) {
-historicoEl.innerHTML = "";
-return;
-}
-historicoEl.innerHTML = "<strong>Ultimos registros desta loja:</strong>" + data.map(r =>
-"<div>" + formatarQuando(r.criado_em) + " - " + r.nome + " - " + r.tipo + "</div>"
-).join("");
 }
 
 const btnRegistrar = document.getElementById("btnRegistrar");
@@ -175,12 +142,7 @@ return;
 const agora = new Date();
 formulario.style.display = "none";
 mensagemEl.innerHTML = "<div class='mensagem ok'>Registrado: " + nome + " - " + tipoSelecionado + " as " + agora.toLocaleString("pt-BR") + "<br><br>Para registrar de novo, escaneie o QR code novamente.</div>";
-carregarHistorico();
 });
-
-if (lojaValida && codigoValido) {
-carregarHistorico();
-}
 </script>
 </body>
 </html>
