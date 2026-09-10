@@ -417,6 +417,10 @@ function horaBrasilia(iso){
 return new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" });
 }
 
+function dataCurtaBrasilia(iso){
+return new Date(iso).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", timeZone: "America/Sao_Paulo" });
+}
+
 function classePill(tipo){
 if (tipo === "Chegada") return "chegada";
 if (tipo === "Saida" || tipo === "Saída") return "saida";
@@ -483,7 +487,7 @@ const nomeLoja = NOME_EXIBICAO[p.loja] || p.loja;
 let chips = "";
 p.registros.forEach(r => {
 const cls = classePill(r.tipo);
-chips += '<span class="pill ' + cls + '">' + horaBrasilia(r.criado_em) + ' · ' + escapeHtml(r.tipo) + '</span>';
+chips += '<span class="pill ' + cls + '">' + dataCurtaBrasilia(r.criado_em) + ' ' + horaBrasilia(r.criado_em) + ' · ' + escapeHtml(r.tipo) + '</span>';
 });
 html += '<div class="ticket-pessoa">'
 + '<div class="quem"><span class="nome">' + escapeHtml(p.nome) + '</span>'
