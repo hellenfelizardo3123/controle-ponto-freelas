@@ -8,63 +8,63 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root{
---bg:#fbf4ec;
+--bg:#f2f6f5;
 --surface:#ffffff;
---surface-2:#f3e9db;
---border:#e9dcc7;
---text:#2b2420;
---text-muted:#8a7b6c;
---accent:#b5461f;
---accent-ink:#7a2e13;
---accent-soft:#f7e2d6;
---good:#2e7d32;
---good-soft:#e5f3e6;
---amber:#a6660f;
---amber-soft:#f6e9d3;
---teal:#2e6b6b;
---teal-soft:#e1eeee;
---shadow: 0 1px 2px rgba(43,36,32,.06), 0 8px 24px -12px rgba(43,36,32,.18);
---focus: #7a2e13;
+--surface-2:#e9f2f0;
+--border:#d7e5e2;
+--text:#152622;
+--text-muted:#5b7871;
+--accent:#0e7c66;
+--accent-ink:#0a5d4c;
+--accent-soft:#e1f3ee;
+--good:#1e9e5a;
+--good-soft:#e4f7ec;
+--amber:#b4650b;
+--amber-soft:#faead4;
+--teal:#1c6f8c;
+--teal-soft:#e2f0f5;
+--shadow: 0 1px 2px rgba(15,35,30,.06), 0 8px 24px -12px rgba(15,35,30,.18);
+--focus: #0a5d4c;
 }
 @media (prefers-color-scheme: dark){
 :root:not([data-theme="light"]){
---bg:#1c1712;
---surface:#251f18;
---surface-2:#2f281f;
---border:#3c3226;
---text:#f2e7d8;
---text-muted:#a9998a;
---accent:#e0703f;
---accent-ink:#f6c8a9;
---accent-soft:#3c2419;
---good:#7fcf82;
---good-soft:#22331f;
---amber:#e0a94b;
---amber-soft:#3a2e17;
---teal:#7fc6c1;
---teal-soft:#1c2f2d;
+--bg:#0f1917;
+--surface:#16211f;
+--surface-2:#1b2926;
+--border:#2b3a36;
+--text:#e6f1ed;
+--text-muted:#93aba4;
+--accent:#14a382;
+--accent-ink:#bdf4e2;
+--accent-soft:#153a30;
+--good:#7fe3a0;
+--good-soft:#173a26;
+--amber:#e8b167;
+--amber-soft:#3a2c14;
+--teal:#7fd0e6;
+--teal-soft:#12333d;
 --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px -12px rgba(0,0,0,.5);
---focus: #f6c8a9;
+--focus: #bdf4e2;
 }
 }
 :root[data-theme="dark"]{
---bg:#1c1712;
---surface:#251f18;
---surface-2:#2f281f;
---border:#3c3226;
---text:#f2e7d8;
---text-muted:#a9998a;
---accent:#e0703f;
---accent-ink:#f6c8a9;
---accent-soft:#3c2419;
---good:#7fcf82;
---good-soft:#22331f;
---amber:#e0a94b;
---amber-soft:#3a2e17;
---teal:#7fc6c1;
---teal-soft:#1c2f2d;
+--bg:#0f1917;
+--surface:#16211f;
+--surface-2:#1b2926;
+--border:#2b3a36;
+--text:#e6f1ed;
+--text-muted:#93aba4;
+--accent:#14a382;
+--accent-ink:#bdf4e2;
+--accent-soft:#153a30;
+--good:#7fe3a0;
+--good-soft:#173a26;
+--amber:#e8b167;
+--amber-soft:#3a2c14;
+--teal:#7fd0e6;
+--teal-soft:#12333d;
 --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px -12px rgba(0,0,0,.5);
---focus: #f6c8a9;
+--focus: #bdf4e2;
 }
 
 *{box-sizing:border-box;}
