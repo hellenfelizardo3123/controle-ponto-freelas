@@ -386,6 +386,10 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 const LOJAS_ORDEM = ["Agua Verde", "Ahu", "Sao Braz"];
 const NOME_EXIBICAO = { "Agua Verde": "Água Verde", "Ahu": "Ahú", "Sao Braz": "São Braz" };
 const VALOR_HORA = 16.66;
+// A partir daqui o painel "esquece" tudo que foi batido antes desse momento
+// (testes de quando o sistema estava sendo montado). Nada é apagado do banco,
+// só escondido — se um dia precisar ver os testes antigos, é só tirar esse filtro.
+const INICIO_USO_REAL = "2026-09-10T22:20:00.000Z";
 
 let registros = [];
 let lojaAtiva = "";
@@ -522,6 +526,7 @@ try{
 const { data, error } = await sb
 .from("registros_ponto")
 .select("nome, tipo, loja, criado_em")
+.gte("criado_em", INICIO_USO_REAL)
 .order("criado_em", { ascending: false })
 .limit(300);
 if (error) throw error;
@@ -619,10 +624,11 @@ return porPessoa;
 async function carregarPagamento(){
 try{
 const inicioPassada = inicioCicloMs(cicloAtual() - 1);
+const inicioConsulta = Math.max(inicioPassada, new Date(INICIO_USO_REAL).getTime());
 const { data, error } = await sb
 .from("registros_ponto")
 .select("nome, tipo, loja, criado_em")
-.gte("criado_em", new Date(inicioPassada).toISOString())
+.gte("criado_em", new Date(inicioConsulta).toISOString())
 .order("criado_em", { ascending: true })
 .limit(5000);
 if (error) throw error;
