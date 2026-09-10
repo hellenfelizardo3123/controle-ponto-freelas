@@ -8,8 +8,7 @@
 <style>
 body { font-family: Arial, sans-serif; background: #fdf6ec; margin: 0; padding: 20px; color: #333; }
 .container { max-width: 420px; margin: 0 auto; background: white; border-radius: 16px; padding: 24px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-h1 { font-size: 22px; text-align: center; color: #b5461f; margin-bottom: 4px; }
-.loja { text-align: center; font-size: 18px; margin-bottom: 20px; font-weight: bold; }
+.loja { text-align: center; font-size: 20px; margin-bottom: 20px; font-weight: bold; color: #b5461f; }
 label { display: block; margin-top: 16px; margin-bottom: 6px; font-weight: bold; }
 select, input[type=text] { width: 100%; padding: 12px; font-size: 16px; border-radius: 8px; border: 1px solid #ccc; box-sizing: border-box; }
 .tipos { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 16px; }
@@ -24,7 +23,6 @@ select, input[type=text] { width: 100%; padding: 12px; font-size: 16px; border-r
 </head>
 <body>
 <div class="container">
-<h1>Controle de ponto</h1>
 <div class="loja" id="nomeLoja">-</div>
 
 <div id="mensagem"></div>
@@ -75,7 +73,11 @@ function codigoDoCiclo(ciclo) {
 return fnv1a(CODIGO_SECRET + ":" + ciclo).slice(0, 8);
 }
 
+// nomes usados para salvar no banco de dados (sem acento, nao mexer)
 const lojas = { aguaverde: "Agua Verde", ahu: "Ahu", saobraz: "Sao Braz" };
+// nomes bonitos so para mostrar na tela
+const nomesExibicao = { aguaverde: "Água Verde", ahu: "Ahú", saobraz: "São Braz" };
+
 const params = new URLSearchParams(window.location.search);
 const codigoLoja = params.get("loja");
 const codigoUrl = (params.get("codigo") || "").toLowerCase();
@@ -86,6 +88,10 @@ const mensagemEl = document.getElementById("mensagem");
 const lojaValida = !!codigoLoja && !!lojas[codigoLoja];
 const codigoEsperado = codigoDoCiclo(cicloAtual());
 const codigoValido = codigoUrl === codigoEsperado;
+
+function nomeLojaBonito() {
+return "Cidadão do Mundo " + (nomesExibicao[codigoLoja] || lojas[codigoLoja]);
+}
 
 // --- impedir lancar a mesma batida de novo so de atualizar a pagina (F5) ---
 const ESPERA_MS = 2 * 60 * 1000; // 2 minutos
@@ -103,15 +109,15 @@ return null;
 }
 }
 
-function salvarRegistroRecente(tipo, nome, quandoMs) {
+function salvarRegistroRecente(quandoMs) {
 try {
-localStorage.setItem(chaveUltimoRegistro, JSON.stringify({ tipo: tipo, nome: nome, hora: quandoMs }));
+localStorage.setItem(chaveUltimoRegistro, JSON.stringify({ hora: quandoMs }));
 } catch (e) {}
 }
 
-function mostrarConfirmacao(nome, tipo, quandoMs) {
+function mostrarConfirmacao() {
 formulario.style.display = "none";
-mensagemEl.innerHTML = "<div class='mensagem ok'>Registrado: " + nome + " - " + tipo + " as " + new Date(quandoMs).toLocaleString("pt-BR") + "<br><br>Para registrar de novo, escaneie o QR code novamente.</div>";
+mensagemEl.innerHTML = "<div class='mensagem ok'>Registrado com sucesso!<br><br>Para registrar de novo, escaneie o QR code novamente.</div>";
 }
 
 if (!lojaValida) {
@@ -119,14 +125,14 @@ nomeLojaEl.textContent = "Link invalido";
 formulario.style.display = "none";
 mensagemEl.innerHTML = "<div class='mensagem erro'>Este link nao tem uma loja valida. Peca o QR code correto para a sua loja.</div>";
 } else if (!codigoValido) {
-nomeLojaEl.textContent = lojas[codigoLoja];
+nomeLojaEl.textContent = nomeLojaBonito();
 formulario.style.display = "none";
 mensagemEl.innerHTML = "<div class='mensagem erro'>Este QR code esta desatualizado (o codigo muda toda quarta-feira, por seguranca). Peca o QR code novo desta semana.</div>";
 } else {
-nomeLojaEl.textContent = lojas[codigoLoja];
+nomeLojaEl.textContent = nomeLojaBonito();
 const recente = registroRecente();
 if (recente) {
-mostrarConfirmacao(recente.nome, recente.tipo, recente.hora);
+mostrarConfirmacao();
 }
 }
 
@@ -170,9 +176,8 @@ mensagemEl.innerHTML = "<div class='mensagem erro'>Nao foi possivel registrar. T
 btnRegistrar.disabled = false;
 return;
 }
-const agora = Date.now();
-salvarRegistroRecente(tipoSelecionado, nome, agora);
-mostrarConfirmacao(nome, tipoSelecionado, agora);
+salvarRegistroRecente(Date.now());
+mostrarConfirmacao();
 });
 </script>
 </body>
