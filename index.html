@@ -59,24 +59,24 @@ const CODIGO_SECRET = "CDMBurgersArts-ponto-2026";
 const CODIGO_REF_Y = 2026, CODIGO_REF_M = 8, CODIGO_REF_D = 9; // mes 0-indexado: 8 = setembro
 
 function fnv1a(str) {
-  let h = 0x811c9dc5;
-  for (let i = 0; i < str.length; i++) {
-    h ^= str.charCodeAt(i);
-    h = Math.imul(h, 0x01000193);
-  }
-  return (h >>> 0).toString(16).padStart(8, "0");
+let h = 0x811c9dc5;
+for (let i = 0; i < str.length; i++) {
+h ^= str.charCodeAt(i);
+h = Math.imul(h, 0x01000193);
+}
+return (h >>> 0).toString(16).padStart(8, "0");
 }
 function diaEpochBrasilia(ms) {
-  const d = new Date(ms - 3 * 3600 * 1000);
-  return Math.floor(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()) / 86400000);
+const d = new Date(ms - 3 * 3600 * 1000);
+return Math.floor(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()) / 86400000);
 }
 function cicloAtual() {
-  const refDia = diaEpochBrasilia(Date.UTC(CODIGO_REF_Y, CODIGO_REF_M, CODIGO_REF_D));
-  const hojeDia = diaEpochBrasilia(Date.now());
-  return Math.floor((hojeDia - refDia) / 7);
+const refDia = diaEpochBrasilia(Date.UTC(CODIGO_REF_Y, CODIGO_REF_M, CODIGO_REF_D));
+const hojeDia = diaEpochBrasilia(Date.now());
+return Math.floor((hojeDia - refDia) / 7);
 }
 function codigoDoCiclo(ciclo) {
-  return fnv1a(CODIGO_SECRET + ":" + ciclo).slice(0, 8);
+return fnv1a(CODIGO_SECRET + ":" + ciclo).slice(0, 8);
 }
 
 const lojas = { aguaverde: "Agua Verde", ahu: "Ahu", saobraz: "Sao Braz" };
@@ -93,17 +93,17 @@ const codigoEsperado = codigoDoCiclo(cicloAtual());
 const codigoValido = codigoUrl === codigoEsperado;
 
 if (!lojaValida) {
-  nomeLojaEl.textContent = "Link invalido";
-  formulario.style.display = "none";
-  historicoEl.style.display = "none";
-  mensagemEl.innerHTML = "<div class='mensagem erro'>Este link nao tem uma loja valida. Peca o QR code correto para a sua loja.</div>";
+nomeLojaEl.textContent = "Link invalido";
+formulario.style.display = "none";
+historicoEl.style.display = "none";
+mensagemEl.innerHTML = "<div class='mensagem erro'>Este link nao tem uma loja valida. Peca o QR code correto para a sua loja.</div>";
 } else if (!codigoValido) {
-  nomeLojaEl.textContent = lojas[codigoLoja];
-  formulario.style.display = "none";
-  historicoEl.style.display = "none";
-  mensagemEl.innerHTML = "<div class='mensagem erro'>Este QR code esta desatualizado (o codigo muda toda quarta-feira, por seguranca). Peca o QR code novo desta semana.</div>";
+nomeLojaEl.textContent = lojas[codigoLoja];
+formulario.style.display = "none";
+historicoEl.style.display = "none";
+mensagemEl.innerHTML = "<div class='mensagem erro'>Este QR code esta desatualizado (o codigo muda toda quarta-feira, por seguranca). Peca o QR code novo desta semana.</div>";
 } else {
-  nomeLojaEl.textContent = lojas[codigoLoja];
+nomeLojaEl.textContent = lojas[codigoLoja];
 }
 
 const inputNome = document.getElementById("nome");
@@ -111,75 +111,75 @@ const inputNome = document.getElementById("nome");
 let tipoSelecionado = null;
 const botoesTipo = document.querySelectorAll(".tipo-btn");
 botoesTipo.forEach(btn => {
-  btn.addEventListener("click", () => {
-    botoesTipo.forEach(b => b.classList.remove("selecionado"));
-    btn.classList.add("selecionado");
-    tipoSelecionado = btn.dataset.tipo;
-    document.getElementById("btnRegistrar").disabled = false;
-  });
+btn.addEventListener("click", () => {
+botoesTipo.forEach(b => b.classList.remove("selecionado"));
+btn.classList.add("selecionado");
+tipoSelecionado = btn.dataset.tipo;
+document.getElementById("btnRegistrar").disabled = false;
+});
 });
 
 function nomeAtual() {
-  return inputNome.value.trim();
+return inputNome.value.trim();
 }
 
 function formatarQuando(iso) {
-  const d = new Date(iso);
-  return d.toLocaleString("pt-BR");
+const d = new Date(iso);
+return d.toLocaleString("pt-BR");
 }
 
 async function carregarHistorico() {
-  if (!lojaValida || !codigoValido) return;
-  const { data, error } = await sb
-    .from("registros_ponto")
-    .select("nome, tipo, criado_em")
-    .eq("loja", lojas[codigoLoja])
-    .order("criado_em", { ascending: false })
-    .limit(5);
-  if (error) {
-    historicoEl.innerHTML = "";
-    return;
-  }
-  if (!data || data.length === 0) {
-    historicoEl.innerHTML = "";
-    return;
-  }
-  historicoEl.innerHTML = "<strong>Ultimos registros desta loja:</strong>" + data.map(r =>
-    "<div>" + formatarQuando(r.criado_em) + " - " + r.nome + " - " + r.tipo + "</div>"
-  ).join("");
+if (!lojaValida || !codigoValido) return;
+const { data, error } = await sb
+.from("registros_ponto")
+.select("nome, tipo, criado_em")
+.eq("loja", lojas[codigoLoja])
+.order("criado_em", { ascending: false })
+.limit(5);
+if (error) {
+historicoEl.innerHTML = "";
+return;
+}
+if (!data || data.length === 0) {
+historicoEl.innerHTML = "";
+return;
+}
+historicoEl.innerHTML = "<strong>Ultimos registros desta loja:</strong>" + data.map(r =>
+"<div>" + formatarQuando(r.criado_em) + " - " + r.nome + " - " + r.tipo + "</div>"
+).join("");
 }
 
 const btnRegistrar = document.getElementById("btnRegistrar");
 btnRegistrar.addEventListener("click", async () => {
-  const nome = nomeAtual();
-  if (!nome) {
-    mensagemEl.innerHTML = "<div class='mensagem erro'>Digite seu nome.</div>";
-    return;
-  }
-  if (!tipoSelecionado) {
-    mensagemEl.innerHTML = "<div class='mensagem erro'>Escolha o que esta registrando.</div>";
-    return;
-  }
-  btnRegistrar.disabled = true;
-  mensagemEl.innerHTML = "<div class='mensagem'>Registrando...</div>";
-  const { error } = await sb.from("registros_ponto").insert({
-    nome: nome,
-    tipo: tipoSelecionado,
-    loja: lojas[codigoLoja]
-  });
-  if (error) {
-    mensagemEl.innerHTML = "<div class='mensagem erro'>Nao foi possivel registrar. Tente novamente. (" + error.message + ")</div>";
-    btnRegistrar.disabled = false;
-    return;
-  }
-  const agora = new Date();
-  mensagemEl.innerHTML = "<div class='mensagem ok'>Registrado: " + nome + " - " + tipoSelecionado + " as " + agora.toLocaleString("pt-BR") + "</div>";
-  btnRegistrar.disabled = false;
-  carregarHistorico();
+const nome = nomeAtual();
+if (!nome) {
+mensagemEl.innerHTML = "<div class='mensagem erro'>Digite seu nome.</div>";
+return;
+}
+if (!tipoSelecionado) {
+mensagemEl.innerHTML = "<div class='mensagem erro'>Escolha o que esta registrando.</div>";
+return;
+}
+btnRegistrar.disabled = true;
+mensagemEl.innerHTML = "<div class='mensagem'>Registrando...</div>";
+const { error } = await sb.from("registros_ponto").insert({
+nome: nome,
+tipo: tipoSelecionado,
+loja: lojas[codigoLoja]
+});
+if (error) {
+mensagemEl.innerHTML = "<div class='mensagem erro'>Nao foi possivel registrar. Tente novamente. (" + error.message + ")</div>";
+btnRegistrar.disabled = false;
+return;
+}
+const agora = new Date();
+formulario.style.display = "none";
+mensagemEl.innerHTML = "<div class='mensagem ok'>Registrado: " + nome + " - " + tipoSelecionado + " as " + agora.toLocaleString("pt-BR") + "<br><br>Para registrar de novo, escaneie o QR code novamente.</div>";
+carregarHistorico();
 });
 
 if (lojaValida && codigoValido) {
-  carregarHistorico();
+carregarHistorico();
 }
 </script>
 </body>
