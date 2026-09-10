@@ -192,30 +192,25 @@ border-radius:16px;
 box-shadow:var(--shadow);
 overflow:hidden;
 }
-.ticket{
+.ticket-pessoa{
 display:flex;
-align-items:center;
+align-items:flex-start;
 gap:14px;
 padding:12px 16px;
 border-bottom:1px solid var(--border);
+flex-wrap:wrap;
 }
-.ticket:last-child{border-bottom:none;}
-.ticket time{
-font-family:'IBM Plex Mono',monospace;
-font-variant-numeric:tabular-nums;
-font-weight:600;
-font-size:16px;
-min-width:52px;
-}
-.ticket .who{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px;}
-.ticket .name{font-weight:600;font-size:14px;overflow-wrap:anywhere;}
+.ticket-pessoa:last-child{border-bottom:none;}
+.quem{display:flex;flex-direction:column;gap:4px;min-width:110px;flex-shrink:0;}
+.quem .nome{font-weight:600;font-size:14px;overflow-wrap:anywhere;}
+.batidas{display:flex;flex-wrap:wrap;gap:6px;flex:1;min-width:0;align-items:center;}
 .pill{
-align-self:flex-start;
-font-size:11px;
+font-size:12px;
 font-weight:600;
-padding:2px 9px;
+padding:4px 10px;
 border-radius:999px;
 letter-spacing:.01em;
+white-space:nowrap;
 }
 .pill.chegada{background:var(--good-soft);color:var(--good);}
 .pill.saida{background:var(--accent-soft);color:var(--accent-ink);}
@@ -467,16 +462,37 @@ const diasOrdenados = Array.from(porDia.keys()).sort().reverse();
 let html = "";
 diasOrdenados.forEach(dia => {
 html += '<div class="day"><span class="day-label">' + rotuloDia(dia, hojeStr, ontemStr) + '</span><div class="ticket-list">';
+
+const porPessoa = new Map();
 porDia.get(dia).forEach(r => {
-const nomeLoja = NOME_EXIBICAO[r.loja] || r.loja;
+const chave = r.nome + "|" + r.loja;
+if (!porPessoa.has(chave)) porPessoa.set(chave, { nome: r.nome, loja: r.loja, registros: [] });
+porPessoa.get(chave).registros.push(r);
+});
+
+const pessoas = Array.from(porPessoa.values());
+pessoas.forEach(p => p.registros.sort((a,b) => new Date(a.criado_em) - new Date(b.criado_em)));
+pessoas.sort((a,b) => {
+const ultimoA = new Date(a.registros[a.registros.length-1].criado_em).getTime();
+const ultimoB = new Date(b.registros[b.registros.length-1].criado_em).getTime();
+return ultimoB - ultimoA;
+});
+
+pessoas.forEach(p => {
+const nomeLoja = NOME_EXIBICAO[p.loja] || p.loja;
+let chips = "";
+p.registros.forEach(r => {
 const cls = classePill(r.tipo);
-html += '<div class="ticket">'
-+ '<time>' + horaBrasilia(r.criado_em) + '</time>'
-+ '<div class="who"><span class="name">' + escapeHtml(r.nome) + '</span>'
-+ '<span class="pill ' + cls + '">' + escapeHtml(r.tipo) + '</span></div>'
+chips += '<span class="pill ' + cls + '">' + horaBrasilia(r.criado_em) + ' · ' + escapeHtml(r.tipo) + '</span>';
+});
+html += '<div class="ticket-pessoa">'
++ '<div class="quem"><span class="nome">' + escapeHtml(p.nome) + '</span>'
 + (lojaAtiva ? "" : '<span class="loja-tag">' + nomeLoja + '</span>')
++ '</div>'
++ '<div class="batidas">' + chips + '</div>'
 + '</div>';
 });
+
 html += '</div></div>';
 });
 
