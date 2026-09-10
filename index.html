@@ -33,14 +33,7 @@ select, input[type=text] { width: 100%; padding: 12px; font-size: 16px; border-r
 
 <div id="formulario">
 <label for="nome">Seu nome</label>
-<select id="nome">
-<option value="">Escolha...</option>
-<option value="Flavia">Flavia</option>
-<option value="Michelle">Michelle</option>
-<option value="Yaimar">Yaimar</option>
-<option value="outro">Outro (digitar)</option>
-</select>
-<input type="text" id="nomeOutro" placeholder="Digite seu nome" style="display:none; margin-top:8px;">
+<input type="text" id="nome" placeholder="Digite seu nome completo">
 
 <label>O que voce esta registrando?</label>
 <div class="tipos">
@@ -113,11 +106,7 @@ if (!lojaValida) {
   nomeLojaEl.textContent = lojas[codigoLoja];
 }
 
-const selectNome = document.getElementById("nome");
-const inputOutro = document.getElementById("nomeOutro");
-selectNome.addEventListener("change", () => {
-  inputOutro.style.display = selectNome.value === "outro" ? "block" : "none";
-});
+const inputNome = document.getElementById("nome");
 
 let tipoSelecionado = null;
 const botoesTipo = document.querySelectorAll(".tipo-btn");
@@ -131,8 +120,7 @@ botoesTipo.forEach(btn => {
 });
 
 function nomeAtual() {
-  if (selectNome.value === "outro") return inputOutro.value.trim();
-  return selectNome.value;
+  return inputNome.value.trim();
 }
 
 function formatarQuando(iso) {
@@ -165,7 +153,7 @@ const btnRegistrar = document.getElementById("btnRegistrar");
 btnRegistrar.addEventListener("click", async () => {
   const nome = nomeAtual();
   if (!nome) {
-    mensagemEl.innerHTML = "<div class='mensagem erro'>Escolha ou digite seu nome.</div>";
+    mensagemEl.innerHTML = "<div class='mensagem erro'>Digite seu nome.</div>";
     return;
   }
   if (!tipoSelecionado) {
