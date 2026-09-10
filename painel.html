@@ -306,6 +306,50 @@ border-bottom:1px solid var(--border);
 .pay-row.pay-total .pay-valor{font-size:15px;color:var(--accent-ink);}
 .pay-nota{font-size:11px;color:var(--text-muted);line-height:1.4;margin:0;}
 
+.qr-loja{
+display:flex;
+flex-direction:column;
+align-items:center;
+gap:8px;
+padding:14px 2px;
+border-bottom:1px solid var(--border);
+text-align:center;
+}
+.qr-loja:last-child{border-bottom:none;}
+.qr-loja .qr-nome{font-weight:600;font-size:14px;}
+.qr-loja img{
+width:150px;
+height:150px;
+border-radius:10px;
+border:1px solid var(--border);
+background:#fff;
+padding:6px;
+}
+.qr-link{
+width:100%;
+font-family:'IBM Plex Mono',monospace;
+font-size:11px;
+color:var(--text-muted);
+background:var(--surface-2);
+border:1px solid var(--border);
+border-radius:8px;
+padding:6px 8px;
+text-align:center;
+overflow-wrap:anywhere;
+}
+.qr-copiar{
+border:1px solid var(--accent);
+background:var(--accent-soft);
+color:var(--accent-ink);
+border-radius:8px;
+padding:6px 12px;
+font-weight:600;
+font-size:12px;
+cursor:pointer;
+font-family:'Inter',sans-serif;
+}
+.qr-copiar:focus-visible{outline:2px solid var(--focus);outline-offset:2px;}
+
 footer{
 text-align:center;
 font-size:12px;
@@ -366,6 +410,14 @@ Atualizar
 <p class="pay-periodo" id="payPeriodo">—</p>
 </div>
 <div id="payConteudo"><div class="loading">Calculando…</div></div>
+</div>
+
+<div class="pay-card">
+<div class="pay-head">
+<span class="eyebrow">QR code da semana</span>
+<p class="pay-periodo" id="qrPeriodo">—</p>
+</div>
+<div id="qrConteudo"><div class="loading">Gerando…</div></div>
 </div>
 </aside>
 
@@ -579,6 +631,60 @@ function normalizarNome(n){
 return String(n || "").trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/\s+/g, " ");
 }
 
+// --- QR code da semana (mesma fórmula do index.html: o código muda toda
+// quarta-feira sozinho, sem precisar mexer em nada aqui) ---
+const CODIGO_SECRET = "CDMBurgersArts-ponto-2026";
+const CHAVE_LOJA = { "Agua Verde": "aguaverde", "Ahu": "ahu", "Sao Braz": "saobraz" };
+
+function fnv1a(str){
+let h = 0x811c9dc5;
+for (let i = 0; i < str.length; i++){
+h ^= str.charCodeAt(i);
+h = Math.imul(h, 0x01000193);
+}
+return (h >>> 0).toString(16).padStart(8, "0");
+}
+function codigoDoCiclo(ciclo){
+return fnv1a(CODIGO_SECRET + ":" + ciclo).slice(0, 8);
+}
+
+function renderQR(){
+const ciclo = cicloAtual();
+const codigo = codigoDoCiclo(ciclo);
+const inicio = inicioCicloMs(ciclo);
+const fim = inicioCicloMs(ciclo + 1);
+document.getElementById("qrPeriodo").textContent = "Vale de " + formatDiaMes(inicio) + " a " + formatDiaMes(fim - 1);
+
+let html = "";
+LOJAS_ORDEM.forEach(loja => {
+const chave = CHAVE_LOJA[loja];
+const nomeLoja = NOME_EXIBICAO[loja] || loja;
+const link = new URL("index.html?loja=" + chave + "&codigo=" + codigo, location.href).href;
+const imgSrc = "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=" + encodeURIComponent(link);
+html += '<div class="qr-loja">'
++ '<span class="qr-nome">' + nomeLoja + '</span>'
++ '<img src="' + imgSrc + '" alt="QR code ' + nomeLoja + '" loading="lazy">'
++ '<span class="qr-link">' + escapeHtml(link) + '</span>'
++ '<button class="qr-copiar" type="button" data-link="' + escapeHtml(link) + '">Copiar link</button>'
++ '</div>';
+});
+document.getElementById("qrConteudo").innerHTML = html;
+
+document.querySelectorAll(".qr-copiar").forEach(btn => {
+btn.addEventListener("click", async () => {
+const texto = btn.dataset.link;
+const rotuloOriginal = btn.textContent;
+try{
+await navigator.clipboard.writeText(texto);
+btn.textContent = "Copiado!";
+} catch(e){
+btn.textContent = "Não copiou, copie na mão";
+}
+setTimeout(() => { btn.textContent = rotuloOriginal; }, 2000);
+});
+});
+}
+
 // Tolerante a batida repetida/fora de ordem (ex: alguém tocou duas vezes sem querer):
 // uma batida que não faz sentido no estado atual (ex: 2ª Chegada sem Saída no meio)
 // é simplesmente ignorada, em vez de contar como "incompleta" e bagunçar a conta.
@@ -698,6 +804,7 @@ btnRefresh.addEventListener("click", () => carregar(false));
 atualizarRelogioTopo();
 carregar(false);
 carregarPagamento();
+renderQR();
 setInterval(() => carregar(true), 60000);
 setInterval(atualizarRelogioTopo, 60000);
 setInterval(carregarPagamento, 60000);
