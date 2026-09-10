@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ponto - Cidadao do Mundo</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+body { font-family: Arial, sans-serif; background: #fdf6ec; margin: 0; padding: 20px; color: #333; }
+.container { max-width: 420px; margin: 0 auto; background: white; border-radius: 16px; padding: 24px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+h1 { font-size: 22px; text-align: center; color: #b5461f; margin-bottom: 4px; }
+.loja { text-align: center; font-size: 18px; margin-bottom: 20px; font-weight: bold; }
+label { display: block; margin-top: 16px; margin-bottom: 6px; font-weight: bold; }
+select, input[type=text] { width: 100%; padding: 12px; font-size: 16px; border-radius: 8px; border: 1px solid #ccc; box-sizing: border-box; }
+.tipos { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 16px; }
+.tipo-btn { padding: 16px 8px; font-size: 15px; border-radius: 10px; border: 2px solid #b5461f; background: white; color: #b5461f; cursor: pointer; }
+.tipo-btn.selecionado { background: #b5461f; color: white; }
+.registrar-btn { width: 100%; margin-top: 20px; padding: 16px; font-size: 18px; border-radius: 10px; border: none; background: #2e7d32; color: white; cursor: pointer; }
+.registrar-btn:disabled { background: #aaa; }
+.mensagem { margin-top: 16px; padding: 12px; border-radius: 8px; text-align: center; font-weight: bold; }
+.mensagem.ok { background: #e8f5e9; color: #2e7d32; }
+.mensagem.erro { background: #fdecea; color: #b5461f; }
+.historico { margin-top: 24px; font-size: 13px; color: #666; }
+.historico div { padding: 6px 0; border-bottom: 1px solid #eee; }
+</style>
+</head>
+<body>
+<div class="container">
+<h1>Controle de ponto</h1>
+<div class="loja" id="nomeLoja">-</div>
+
+<div id="formulario">
+<label for="nome">Seu nome</label>
+<select id="nome">
+<option value="">Escolha...</option>
+<option value="Flavia">Flavia</option>
+<option value="Michelle">Michelle</option>
+<option value="Yaimar">Yaimar</option>
+<option value="outro">Outro (digitar)</option>
+</select>
+<input type="text" id="nomeOutro" placeholder="Digite seu nome" style="display:none; margin-top:8px;">
+
+<label>O que voce esta registrando?</label>
+<div class="tipos">
+<button class="tipo-btn" data-tipo="Chegada">Chegada</button>
+<button class="tipo-btn" data-tipo="Inicio do intervalo">Inicio do intervalo</button>
+<button class="tipo-btn" data-tipo="Fim do intervalo">Fim do intervalo</button>
+<button class="tipo-btn" data-tipo="Saida">Saida</button>
+</div>
+
+<button class="registrar-btn" id="btnRegistrar" disabled>Registrar</button>
+<div id="mensagem"></div>
+</div>
+
+<div class="historico" id="historico">Carregando ultimos registros...</div>
+</div>
+
+<script>
+const SUPABASE_URL = "https://dzgvawxdnjxemifeactr.supabase.co";
+const SUPABASE_KEY = "sb_publishable_to-gABecxZny25QLi0OTcQ_HK8nePyG";
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// --- codigo semanal (muda toda quarta-feira, sem precisar de banco de dados) ---
+const CODIGO_SECRET = "CDMBurgersArts-ponto-2026";
+const CODIGO_REF_Y = 2026, CODIGO_REF_M = 8, CODIGO_REF_D = 9; // mes 0-indexado: 8 = setembro
+
+function fnv1a(str) {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return (h >>> 0).toString(16).padStart(8, "0");
+}
+function diaEpochBrasilia(ms) {
+  const d = new Date(ms - 3 * 3600 * 1000);
+  return Math.floor(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()) / 86400000);
+}
+function cicloAtual() {
+  const refDia = diaEpochBrasilia(Date.UTC(CODIGO_REF_Y, CODIGO_REF_M, CODIGO_REF_D));
+  const hojeDia = diaEpochBrasilia(Date.now());
+  return Math.floor((hojeDia - refDia) / 7);
+}
+function codigoDoCiclo(ciclo) {
+  return fnv1a(CODIGO_SECRET + ":" + ciclo).slice(0, 8);
+}
+
+const lojas = { aguaverde: "Agua Verde", ahu: "Ahu", saobraz: "Sao Braz" };
+const params = new URLSearchParams(window.location.search);
+const codigoLoja = params.get("loja");
+const codigoUrl = (params.get("codigo") || "").toLowerCase();
+const nomeLojaEl = document.getElementById("nomeLoja");
+const formulario = document.getElementById("formulario");
+const historicoEl = document.getElementById("historico");
+const mensagemEl = document.getElementById("mensagem");
+
+const lojaValida = !!codigoLoja && !!lojas[codigoLoja];
+const codigoEsperado = codigoDoCiclo(cicloAtual());
+const codigoValido = codigoUrl === codigoEsperado;
+
+if (!lojaValida) {
+  nomeLojaEl.textContent = "Link invalido";
+  formulario.style.display = "none";
+  historicoEl.style.display = "none";
+  mensagemEl.innerHTML = "<div class='mensagem erro'>Este link nao tem uma loja valida. Peca o QR code correto para a sua loja.</div>";
+} else if (!codigoValido) {
+  nomeLojaEl.textContent = lojas[codigoLoja];
+  formulario.style.display = "none";
+  historicoEl.style.display = "none";
+  mensagemEl.innerHTML = "<div class='mensagem erro'>Este QR code esta desatualizado (o codigo muda toda quarta-feira, por seguranca). Peca o QR code novo desta semana.</div>";
+} else {
+  nomeLojaEl.textContent = lojas[codigoLoja];
+}
+
+const selectNome = document.getElementById("nome");
+const inputOutro = document.getElementById("nomeOutro");
+selectNome.addEventListener("change", () => {
+  inputOutro.style.display = selectNome.value === "outro" ? "block" : "none";
+});
+
+let tipoSelecionado = null;
+const botoesTipo = document.querySelectorAll(".tipo-btn");
+botoesTipo.forEach(btn => {
+  btn.addEventListener("click", () => {
+    botoesTipo.forEach(b => b.classList.remove("selecionado"));
+    btn.classList.add("selecionado");
+    tipoSelecionado = btn.dataset.tipo;
+    document.getElementById("btnRegistrar").disabled = false;
+  });
+});
+
+function nomeAtual() {
+  if (selectNome.value === "outro") return inputOutro.value.trim();
+  return selectNome.value;
+}
+
+function formatarQuando(iso) {
+  const d = new Date(iso);
+  return d.toLocaleString("pt-BR");
+}
+
+async function carregarHistorico() {
+  if (!lojaValida || !codigoValido) return;
+  const { data, error } = await sb
+    .from("registros_ponto")
+    .select("nome, tipo, criado_em")
+    .eq("loja", lojas[codigoLoja])
+    .order("criado_em", { ascending: false })
+    .limit(5);
+  if (error) {
+    historicoEl.innerHTML = "";
+    return;
+  }
+  if (!data || data.length === 0) {
+    historicoEl.innerHTML = "";
+    return;
+  }
+  historicoEl.innerHTML = "<strong>Ultimos registros desta loja:</strong>" + data.map(r =>
+    "<div>" + formatarQuando(r.criado_em) + " - " + r.nome + " - " + r.tipo + "</div>"
+  ).join("");
+}
+
+const btnRegistrar = document.getElementById("btnRegistrar");
+btnRegistrar.addEventListener("click", async () => {
+  const nome = nomeAtual();
+  const msg = document.getElementById("mensagem");
+  if (!nome) {
+    msg.innerHTML = "<div class='mensagem erro'>Escolha ou digite seu nome.</div>";
+    return;
+  }
+  if (!tipoSelecionado) {
+    msg.innerHTML = "<div class='mensagem erro'>Escolha o que esta registrando.</div>";
+    return;
+  }
+  btnRegistrar.disabled = true;
+  msg.innerHTML = "<div class='mensagem'>Registrando...</div>";
+  const { error } = await sb.from("registros_ponto").insert({
+    nome: nome,
+    tipo: tipoSelecionado,
+    loja: lojas[codigoLoja]
+  });
+  if (error) {
+    msg.innerHTML = "<div class='mensagem erro'>Nao foi possivel registrar. Tente novamente. (" + error.message + ")</div>";
+    btnRegistrar.disabled = false;
+    return;
+  }
+  const agora = new Date();
+  msg.innerHTML = "<div class='mensagem ok'>Registrado: " + nome + " - " + tipoSelecionado + " as " + agora.toLocaleString("pt-BR") + "</div>";
+  btnRegistrar.disabled = false;
+  carregarHistorico();
+});
+
+if (lojaValida && codigoValido) {
+  carregarHistorico();
+}
+</script>
+</body>
+</html>
