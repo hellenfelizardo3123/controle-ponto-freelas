@@ -350,6 +350,20 @@ font-family:'Inter',sans-serif;
 }
 .qr-copiar:focus-visible{outline:2px solid var(--focus);outline-offset:2px;}
 
+.qr-print-btn{
+border:none;
+background:var(--accent);
+color:#fff8f2;
+border-radius:8px;
+padding:8px 14px;
+font-weight:600;
+font-size:12px;
+cursor:pointer;
+font-family:'Inter',sans-serif;
+align-self:flex-start;
+}
+.qr-print-btn:focus-visible{outline:2px solid var(--focus);outline-offset:2px;}
+
 footer{
 text-align:center;
 font-size:12px;
@@ -416,6 +430,7 @@ Atualizar
 <div class="pay-head">
 <span class="eyebrow">QR code da semana</span>
 <p class="pay-periodo" id="qrPeriodo">—</p>
+<button id="btnImprimirQR" class="qr-print-btn" type="button">Imprimir os 3 QR codes</button>
 </div>
 <div id="qrConteudo"><div class="loading">Gerando…</div></div>
 </div>
@@ -455,6 +470,7 @@ const elDataHoje = document.getElementById("dataHoje");
 const elAtualizadoEm = document.getElementById("atualizadoEm");
 const btnRefresh = document.getElementById("btnRefresh");
 const tabs = Array.from(document.querySelectorAll(".tab"));
+const btnImprimirQR = document.getElementById("btnImprimirQR");
 
 function diaBrasilia(isoOuMs){
 const ms = typeof isoOuMs === "string" ? new Date(isoOuMs).getTime() : isoOuMs;
@@ -685,6 +701,51 @@ setTimeout(() => { btn.textContent = rotuloOriginal; }, 2000);
 });
 }
 
+// Abre uma janela só com os 3 QR codes, grandes, um por página, prontos para
+// imprimir e colar em cada loja. Chama a impressão sozinha assim que as
+// imagens terminarem de carregar (não precisa apertar mais nada).
+function imprimirTodos(){
+const ciclo = cicloAtual();
+const codigo = codigoDoCiclo(ciclo);
+const inicio = inicioCicloMs(ciclo);
+const fim = inicioCicloMs(ciclo + 1);
+const periodo = "Vale de " + formatDiaMes(inicio) + " a " + formatDiaMes(fim - 1);
+
+let paginas = "";
+LOJAS_ORDEM.forEach(loja => {
+const chave = CHAVE_LOJA[loja];
+const nomeLoja = NOME_EXIBICAO[loja] || loja;
+const link = new URL("index.html?loja=" + chave + "&codigo=" + codigo, location.href).href;
+const imgSrc = "https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=" + encodeURIComponent(link);
+paginas += '<div class="pagina">'
++ '<h1>' + escapeHtml(nomeLoja) + '</h1>'
++ '<p>' + escapeHtml(periodo) + ' — aponte a câmera do celular para bater o ponto</p>'
++ '<img src="' + imgSrc + '" alt="QR code ' + escapeHtml(nomeLoja) + '">'
++ '</div>';
+});
+
+const conteudo = '<!doctype html><html lang="pt-br"><head><meta charset="UTF-8"><title>QR codes - Cidadão do Mundo</title>'
++ '<style>'
++ 'body{font-family:Arial,Helvetica,sans-serif;margin:0;padding:0;color:#152622;}'
++ '.pagina{page-break-after:always;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px;box-sizing:border-box;}'
++ '.pagina:last-child{page-break-after:auto;}'
++ 'h1{font-size:32px;margin:0 0 8px;}'
++ 'p{color:#555;margin:0 0 24px;font-size:16px;}'
++ 'img{width:320px;height:320px;}'
++ '</style></head><body>'
++ paginas
++ '<script>window.addEventListener("load", function(){ setTimeout(function(){ window.print(); }, 300); });<\/script>'
++ '</body></html>';
+
+const janela = window.open("", "_blank");
+if (!janela){
+alert("O navegador bloqueou a janela de impressão. Permita pop-ups para este site e tente de novo.");
+return;
+}
+janela.document.write(conteudo);
+janela.document.close();
+}
+
 // Tolerante a batida repetida/fora de ordem (ex: alguém tocou duas vezes sem querer):
 // uma batida que não faz sentido no estado atual (ex: 2ª Chegada sem Saída no meio)
 // é simplesmente ignorada, em vez de contar como "incompleta" e bagunçar a conta.
@@ -800,6 +861,7 @@ renderLista();
 });
 
 btnRefresh.addEventListener("click", () => carregar(false));
+btnImprimirQR.addEventListener("click", imprimirTodos);
 
 atualizarRelogioTopo();
 carregar(false);
