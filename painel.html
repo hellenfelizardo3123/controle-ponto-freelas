@@ -150,6 +150,20 @@ color:#fff8f2;
 }
 .tab:focus-visible{outline:2px solid var(--focus);outline-offset:2px;}
 
+#filtroNome{
+font-family:'Inter',sans-serif;
+font-size:13px;
+font-weight:600;
+padding:8px 14px;
+border-radius:999px;
+border:1px solid var(--border);
+background:var(--surface);
+color:var(--text);
+cursor:pointer;
+max-width:180px;
+}
+#filtroNome:focus-visible{outline:2px solid var(--focus);outline-offset:2px;}
+
 .refresh{
 display:flex;align-items:center;gap:8px;
 font-size:12px;color:var(--text-muted);
@@ -298,6 +312,7 @@ border-bottom:1px solid var(--border);
 .pay-row:last-child{border-bottom:none;}
 .pay-who{display:flex;flex-direction:column;gap:3px;min-width:0;}
 .pay-name{font-weight:600;font-size:13px;overflow-wrap:anywhere;}
+.pay-right{display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0;}
 .pay-nums{display:flex;flex-direction:column;align-items:flex-end;gap:2px;flex-shrink:0;}
 .pay-horas{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--text-muted);font-variant-numeric:tabular-nums;}
 .pay-valor{font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:14px;font-variant-numeric:tabular-nums;}
@@ -305,6 +320,49 @@ border-bottom:1px solid var(--border);
 .pay-row.pay-total .pay-name{font-weight:700;}
 .pay-row.pay-total .pay-valor{font-size:15px;color:var(--accent-ink);}
 .pay-nota{font-size:11px;color:var(--text-muted);line-height:1.4;margin:0;}
+
+.pay-marcar{
+border:1px solid var(--accent);
+background:var(--accent-soft);
+color:var(--accent-ink);
+border-radius:8px;
+padding:4px 10px;
+font-weight:600;
+font-size:11px;
+cursor:pointer;
+font-family:'Inter',sans-serif;
+margin-top:2px;
+white-space:nowrap;
+}
+.pay-marcar:focus-visible{outline:2px solid var(--focus);outline-offset:2px;}
+.pay-pago{
+display:flex;
+align-items:center;
+gap:6px;
+font-size:11px;
+font-weight:600;
+color:var(--good);
+margin-top:2px;
+white-space:nowrap;
+border:none;
+background:none;
+padding:0;
+cursor:pointer;
+font-family:'Inter',sans-serif;
+}
+.pay-pago:focus-visible{outline:2px solid var(--focus);outline-offset:2px;}
+.pay-desfazer{
+font-size:10px;
+font-weight:500;
+color:var(--text-muted);
+text-decoration:underline;
+cursor:pointer;
+background:none;
+border:none;
+font-family:'Inter',sans-serif;
+padding:0;
+}
+.pay-desfazer:focus-visible{outline:2px solid var(--focus);outline-offset:2px;}
 
 .qr-loja{
 display:flex;
@@ -398,6 +456,9 @@ footer a{color:var(--text-muted);}
 <button class="tab" id="tabAhu" role="tab" aria-pressed="false" data-loja="Ahu">Ahú</button>
 <button class="tab" id="tabSaoBraz" role="tab" aria-pressed="false" data-loja="Sao Braz">São Braz</button>
 </div>
+<select id="filtroNome" aria-label="Filtrar por pessoa">
+<option value="">Todas as pessoas</option>
+</select>
 <div class="refresh">
 <span id="atualizadoEm">—</span>
 <button id="btnRefresh" type="button" aria-label="Atualizar agora">
@@ -460,7 +521,9 @@ const INICIO_USO_REAL = "2026-09-10T22:20:00.000Z";
 
 let registros = [];
 let lojaAtiva = "";
+let nomeAtivo = "";
 let carregouUmaVez = false;
+let marcadosPagos = new Set();
 
 let registrosPagamento = [];
 let semanaAtivaPay = "atual";
@@ -471,6 +534,7 @@ const elAtualizadoEm = document.getElementById("atualizadoEm");
 const btnRefresh = document.getElementById("btnRefresh");
 const tabs = Array.from(document.querySelectorAll(".tab"));
 const btnImprimirQR = document.getElementById("btnImprimirQR");
+const filtroNomeEl = document.getElementById("filtroNome");
 
 function diaBrasilia(isoOuMs){
 const ms = typeof isoOuMs === "string" ? new Date(isoOuMs).getTime() : isoOuMs;
@@ -515,11 +579,27 @@ document.getElementById("statAhu").textContent = hojeRegistros.filter(r => r.loj
 document.getElementById("statSaoBraz").textContent = hojeRegistros.filter(r => r.loja === "Sao Braz").length;
 }
 
+function atualizarFiltroNomes(){
+const nomes = Array.from(new Set(registros.map(r => (r.nome || "").trim()).filter(Boolean))).sort((a,b) => a.localeCompare(b, "pt-BR"));
+const atual = filtroNomeEl.value;
+let html = '<option value="">Todas as pessoas</option>';
+nomes.forEach(n => { html += '<option value="' + escapeHtml(n) + '">' + escapeHtml(n) + '</option>'; });
+filtroNomeEl.innerHTML = html;
+if (nomes.includes(atual)) filtroNomeEl.value = atual;
+else { nomeAtivo = ""; }
+}
+
 function renderLista(){
-const filtrados = lojaAtiva ? registros.filter(r => r.loja === lojaAtiva) : registros;
+const filtrados = registros.filter(r =>
+(!lojaAtiva || r.loja === lojaAtiva) &&
+(!nomeAtivo || normalizarNome(r.nome) === normalizarNome(nomeAtivo))
+);
 
 if (filtrados.length === 0){
-elConteudo.innerHTML = '<div class="empty">Nenhum registro ainda' + (lojaAtiva ? " em " + NOME_EXIBICAO[lojaAtiva] : "") + '.</div>';
+const partes = [];
+if (lojaAtiva) partes.push("em " + NOME_EXIBICAO[lojaAtiva]);
+if (nomeAtivo) partes.push("de " + nomeAtivo);
+elConteudo.innerHTML = '<div class="empty">Nenhum registro ainda' + (partes.length ? " " + partes.join(" ") : "") + '.</div>';
 return;
 }
 
@@ -601,6 +681,7 @@ if (error) throw error;
 registros = data || [];
 carregouUmaVez = true;
 renderStats();
+atualizarFiltroNomes();
 renderLista();
 elAtualizadoEm.textContent = "atualizado às " + new Date().toLocaleTimeString("pt-BR", { timeZone: "America/Sao_Paulo" });
 } catch(e){
@@ -788,7 +869,51 @@ if (p) p.incompletos++;
 return porPessoa;
 }
 
+// Guarda quem já foi marcado como pago (nome + loja + semana), pra lembrar
+// mesmo depois de fechar e abrir o painel de novo. Fica salvo no Supabase,
+// na tabela pagamentos_marcados.
+async function carregarMarcados(){
+try{
+const { data, error } = await sb
+.from("pagamentos_marcados")
+.select("nome_normalizado, loja, semana_inicio")
+.limit(1000);
+if (error) throw error;
+marcadosPagos = new Set((data || []).map(m => m.nome_normalizado + "|" + m.loja + "|" + m.semana_inicio));
+} catch(e){
+// se não conseguir carregar, o painel continua funcionando normalmente,
+// só não mostra quem já foi marcado como pago
+marcadosPagos = new Set();
+}
+}
+
+async function marcarComoPago(nome, loja, semanaInicioStr){
+try{
+await sb.from("pagamentos_marcados").upsert({
+nome_normalizado: normalizarNome(nome),
+nome_exibicao: nome,
+loja: loja,
+semana_inicio: semanaInicioStr
+}, { onConflict: "nome_normalizado,loja,semana_inicio" });
+} catch(e){}
+await carregarMarcados();
+renderPagamento();
+}
+
+async function desmarcarPago(nome, loja, semanaInicioStr){
+try{
+await sb.from("pagamentos_marcados")
+.delete()
+.eq("nome_normalizado", normalizarNome(nome))
+.eq("loja", loja)
+.eq("semana_inicio", semanaInicioStr);
+} catch(e){}
+await carregarMarcados();
+renderPagamento();
+}
+
 async function carregarPagamento(){
+await carregarMarcados();
 try{
 const inicioPassada = inicioCicloMs(cicloAtual() - 1);
 const inicioConsulta = Math.max(inicioPassada, new Date(INICIO_USO_REAL).getTime());
@@ -812,6 +937,7 @@ const ciclo = semanaAtivaPay === "atual" ? cicloN : cicloN - 1;
 const inicio = inicioCicloMs(ciclo);
 const fim = inicioCicloMs(ciclo + 1);
 document.getElementById("payPeriodo").textContent = formatDiaMes(inicio) + " a " + formatDiaMes(fim - 1);
+const semanaInicioStr = diaBrasilia(inicio);
 
 const doPeriodo = registrosPagamento.filter(r => {
 const t = new Date(r.criado_em).getTime();
@@ -829,7 +955,13 @@ totalMs += p.ms;
 totalIncompletos += p.incompletos;
 const valor = (p.ms / 3600000) * VALOR_HORA;
 const nomeLoja = NOME_EXIBICAO[p.loja] || p.loja;
-linhasHtml += '<div class="pay-row"><div class="pay-who"><span class="pay-name">' + escapeHtml(p.nome) + (p.incompletos ? " *" : "") + '</span><span class="loja-tag">' + nomeLoja + '</span></div><div class="pay-nums"><span class="pay-horas">' + formatHoras(p.ms) + '</span><span class="pay-valor">' + formatBRL(valor) + '</span></div></div>';
+const chavePago = normalizarNome(p.nome) + "|" + p.loja + "|" + semanaInicioStr;
+const estaPago = marcadosPagos.has(chavePago);
+const nomeAttr = escapeHtml(p.nome).replace(/'/g, "&#39;");
+const acaoHtml = estaPago
+? '<button type="button" class="pay-pago" data-nome="' + nomeAttr + '" data-loja="' + p.loja + '">✓ Pago <span class="pay-desfazer">(desfazer)</span></button>'
+: '<button type="button" class="pay-marcar" data-nome="' + nomeAttr + '" data-loja="' + p.loja + '">Marcar como pago</button>';
+linhasHtml += '<div class="pay-row"><div class="pay-who"><span class="pay-name">' + escapeHtml(p.nome) + (p.incompletos ? " *" : "") + '</span><span class="loja-tag">' + nomeLoja + '</span></div><div class="pay-right"><div class="pay-nums"><span class="pay-horas">' + formatHoras(p.ms) + '</span><span class="pay-valor">' + formatBRL(valor) + '</span></div>' + acaoHtml + '</div></div>';
 });
 }
 const totalValor = (totalMs / 3600000) * VALOR_HORA;
@@ -842,6 +974,18 @@ if (totalIncompletos > 0){
 html += '<p class="pay-nota">* tem batida incompleta (faltou marcar entrada ou saída) nessa semana — essas horas não entraram na conta. Dá uma conferida.</p>';
 }
 document.getElementById("payConteudo").innerHTML = html;
+document.querySelectorAll(".pay-marcar").forEach(btn => {
+btn.addEventListener("click", () => {
+btn.disabled = true;
+marcarComoPago(btn.dataset.nome, btn.dataset.loja, semanaInicioStr);
+});
+});
+document.querySelectorAll(".pay-pago").forEach(btn => {
+btn.addEventListener("click", () => {
+btn.disabled = true;
+desmarcarPago(btn.dataset.nome, btn.dataset.loja, semanaInicioStr);
+});
+});
 }
 
 document.querySelectorAll(".paytab").forEach(btn => {
@@ -862,6 +1006,10 @@ renderLista();
 
 btnRefresh.addEventListener("click", () => carregar(false));
 btnImprimirQR.addEventListener("click", imprimirTodos);
+filtroNomeEl.addEventListener("change", () => {
+nomeAtivo = filtroNomeEl.value;
+renderLista();
+});
 
 atualizarRelogioTopo();
 carregar(false);
