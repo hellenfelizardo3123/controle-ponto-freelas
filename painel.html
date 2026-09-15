@@ -477,7 +477,7 @@ Atualizar
 <aside class="aside">
 <div class="pay-card">
 <div class="pay-head">
-<span class="eyebrow">Pagamento · R$16,66/hora</span>
+<span class="eyebrow">Pagamento · Água Verde/Ahú R$16,66 · São Braz R$14,66</span>
 <div class="pay-tabs" id="payTabs" role="tablist" aria-label="Escolher semana">
 <button class="paytab" data-semana="atual" role="tab" aria-pressed="true">Semana atual</button>
 <button class="paytab" data-semana="passada" role="tab" aria-pressed="false">Semana passada</button>
@@ -513,7 +513,10 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const LOJAS_ORDEM = ["Agua Verde", "Ahu", "Sao Braz"];
 const NOME_EXIBICAO = { "Agua Verde": "Água Verde", "Ahu": "Ahú", "Sao Braz": "São Braz" };
-const VALOR_HORA = 16.66;
+const VALOR_HORA_POR_LOJA = { "Agua Verde": 16.66, "Ahu": 16.66, "Sao Braz": 14.66 };
+function valorHoraDaLoja(loja){
+return VALOR_HORA_POR_LOJA[loja] !== undefined ? VALOR_HORA_POR_LOJA[loja] : 16.66;
+}
 // A partir daqui o painel "esquece" tudo que foi batido antes desse momento
 // (testes de quando o sistema estava sendo montado). Nada é apagado do banco,
 // só escondido — se um dia precisar ver os testes antigos, é só tirar esse filtro.
@@ -691,7 +694,7 @@ setTimeout(() => btnRefresh.classList.remove("spinning"), 500);
 }
 }
 
-// --- pagamento semanal (R$16,66/hora), ciclo quarta a terça (igual ao codigo do QR) ---
+// --- pagamento semanal (valor da hora varia por loja, ver VALOR_HORA_POR_LOJA), ciclo quarta a terça (igual ao codigo do QR) ---
 const CICLO_REF_Y = 2026, CICLO_REF_M = 8, CICLO_REF_D = 9; // Wed 2026-09-09, ciclo 0
 
 function diaEpochBrasilia(ms){
@@ -946,14 +949,15 @@ return t >= inicio && t < fim;
 const mapa = calcularPagamentos(doPeriodo);
 const linhas = Array.from(mapa.values()).sort((a,b) => a.nome.localeCompare(b.nome, "pt-BR"));
 
-let totalMs = 0, totalIncompletos = 0, linhasHtml = "";
+let totalMs = 0, totalIncompletos = 0, totalValor = 0, linhasHtml = "";
 if (linhas.length === 0){
 linhasHtml = '<p class="pay-nota" style="padding:8px 2px;">Sem registros nessa semana ainda.</p>';
 } else {
 linhas.forEach(p => {
 totalMs += p.ms;
 totalIncompletos += p.incompletos;
-const valor = (p.ms / 3600000) * VALOR_HORA;
+const valor = (p.ms / 3600000) * valorHoraDaLoja(p.loja);
+totalValor += valor;
 const nomeLoja = NOME_EXIBICAO[p.loja] || p.loja;
 const chavePago = normalizarNome(p.nome) + "|" + p.loja + "|" + semanaInicioStr;
 const estaPago = marcadosPagos.has(chavePago);
@@ -964,7 +968,6 @@ const acaoHtml = estaPago
 linhasHtml += '<div class="pay-row"><div class="pay-who"><span class="pay-name">' + escapeHtml(p.nome) + (p.incompletos ? " *" : "") + '</span><span class="loja-tag">' + nomeLoja + '</span></div><div class="pay-right"><div class="pay-nums"><span class="pay-horas">' + formatHoras(p.ms) + '</span><span class="pay-valor">' + formatBRL(valor) + '</span></div>' + acaoHtml + '</div></div>';
 });
 }
-const totalValor = (totalMs / 3600000) * VALOR_HORA;
 
 let html = '<div class="pay-total-linha"><span class="l">Total da semana</span><span class="n">' + formatBRL(totalValor) + '</span></div>';
 html += '<div class="pay-list">' + linhasHtml;
