@@ -611,7 +611,7 @@ const ontemStr = diaBrasilia(Date.now() - 24*3600*1000);
 
 const porDia = new Map();
 filtrados.forEach(r => {
-const dia = diaBrasilia(r.criado_em);
+const dia = r.diaEfetivo || diaBrasilia(r.criado_em);
 if (!porDia.has(dia)) porDia.set(dia, []);
 porDia.get(dia).push(r);
 });
@@ -682,6 +682,7 @@ const { data, error } = await sb
 .limit(300);
 if (error) throw error;
 registros = data || [];
+calcularDiaEfetivo(registros);
 carregouUmaVez = true;
 renderStats();
 atualizarFiltroNomes();
@@ -828,6 +829,33 @@ return;
 }
 janela.document.write(conteudo);
 janela.document.close();
+}
+
+// Descobre o "dia efetivo" de cada batida: quando o turno começa num dia e
+// termina depois da meia-noite (ex: entra 18:00, sai 00:30), todas as batidas
+// desse turno (Chegada, intervalo, Saída) ficam marcadas com o dia em que o
+// turno começou — assim a lista mostra o turno inteiro junto, em vez da Saída
+// aparecer sozinha no dia seguinte.
+function calcularDiaEfetivo(lista){
+const estados = new Map();
+const ordenados = lista.slice().sort((a,b) => new Date(a.criado_em) - new Date(b.criado_em));
+ordenados.forEach(r => {
+const chave = normalizarNome(r.nome) + "|" + r.loja;
+if (!estados.has(chave)) estados.set(chave, { turnoDia: null });
+const st = estados.get(chave);
+const diaProprio = diaBrasilia(r.criado_em);
+if (r.tipo === "Chegada"){
+st.turnoDia = diaProprio;
+r.diaEfetivo = diaProprio;
+} else if (r.tipo === "Inicio do intervalo" || r.tipo === "Fim do intervalo"){
+r.diaEfetivo = st.turnoDia || diaProprio;
+} else if (r.tipo === "Saida" || r.tipo === "Saída"){
+r.diaEfetivo = st.turnoDia || diaProprio;
+st.turnoDia = null;
+} else {
+r.diaEfetivo = diaProprio;
+}
+});
 }
 
 // Tolerante a batida repetida/fora de ordem (ex: alguém tocou duas vezes sem querer):
