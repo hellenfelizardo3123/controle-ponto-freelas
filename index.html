@@ -64,8 +64,11 @@ function diaEpochBrasilia(ms) {
 const d = new Date(ms - 3 * 3600 * 1000);
 return Math.floor(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()) / 86400000);
 }
+function diaEpochCalendario(y, m, d) {
+return Math.floor(Date.UTC(y, m, d) / 86400000);
+}
 function cicloAtual() {
-const refDia = diaEpochBrasilia(Date.UTC(CODIGO_REF_Y, CODIGO_REF_M, CODIGO_REF_D));
+const refDia = diaEpochCalendario(CODIGO_REF_Y, CODIGO_REF_M, CODIGO_REF_D);
 const hojeDia = diaEpochBrasilia(Date.now());
 return Math.floor((hojeDia - refDia) / 7);
 }
