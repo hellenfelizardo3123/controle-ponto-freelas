@@ -239,6 +239,16 @@ border-radius:8px;
 padding:3px 8px;
 white-space:nowrap;
 }
+.turno-tag{
+font-family:'Inter',sans-serif;
+font-size:11px;
+font-weight:600;
+color:var(--accent-ink);
+background:var(--accent-soft);
+border-radius:8px;
+padding:3px 8px;
+white-space:nowrap;
+}
 
 .empty, .error, .loading{
 background:var(--surface);
@@ -622,15 +632,32 @@ let html = "";
 diasOrdenados.forEach(dia => {
 html += '<div class="day"><span class="day-label">' + rotuloDia(dia, hojeStr, ontemStr) + '</span><div class="ticket-list">';
 
+// Um bloco por turno (nao mais um bloco por pessoa): quem bateu ponto duas
+// vezes no mesmo dia (dois turnos) ganha duas fileiras separadas, cada uma
+// só com as batidas daquele turno.
 const porPessoa = new Map();
 porDia.get(dia).forEach(r => {
-const chave = r.nome + "|" + r.loja;
+const chave = r.nome + "|" + r.loja + "|" + (r.turnoId || 0);
 if (!porPessoa.has(chave)) porPessoa.set(chave, { nome: r.nome, loja: r.loja, registros: [] });
 porPessoa.get(chave).registros.push(r);
 });
 
 const pessoas = Array.from(porPessoa.values());
 pessoas.forEach(p => p.registros.sort((a,b) => new Date(a.criado_em) - new Date(b.criado_em)));
+
+// Numera os turnos de cada pessoa nesse dia (1º turno, 2º turno...), só
+// pra exibir a etiqueta quando ela realmente tiver mais de um turno.
+const gruposPorPessoa = new Map();
+pessoas.forEach(p => {
+const k = p.nome + "|" + p.loja;
+if (!gruposPorPessoa.has(k)) gruposPorPessoa.set(k, []);
+gruposPorPessoa.get(k).push(p);
+});
+gruposPorPessoa.forEach(grupo => {
+grupo.sort((a,b) => new Date(a.registros[0].criado_em) - new Date(b.registros[0].criado_em));
+grupo.forEach((p, i) => { p.numeroTurno = i + 1; p.totalTurnos = grupo.length; });
+});
+
 pessoas.sort((a,b) => {
 const ultimoA = new Date(a.registros[a.registros.length-1].criado_em).getTime();
 const ultimoB = new Date(b.registros[b.registros.length-1].criado_em).getTime();
@@ -644,8 +671,10 @@ p.registros.forEach(r => {
 const cls = classePill(r.tipo);
 chips += '<span class="pill ' + cls + '">' + dataCurtaBrasilia(r.criado_em) + ' ' + horaBrasilia(r.criado_em) + ' · ' + escapeHtml(r.tipo) + '</span>';
 });
+const turnoTag = p.totalTurnos > 1 ? '<span class="turno-tag">' + p.numeroTurno + 'º turno</span>' : '';
 html += '<div class="ticket-pessoa">'
 + '<div class="quem"><span class="nome">' + escapeHtml(p.nome) + '</span>'
++ turnoTag
 + (lojaAtiva ? "" : '<span class="loja-tag">' + nomeLoja + '</span>')
 + '</div>'
 + '<div class="batidas">' + chips + '</div>'
@@ -836,24 +865,32 @@ janela.document.close();
 // desse turno (Chegada, intervalo, Saída) ficam marcadas com o dia em que o
 // turno começou — assim a lista mostra o turno inteiro junto, em vez da Saída
 // aparecer sozinha no dia seguinte.
+// Também numera os turnos de cada pessoa (turnoId), pra quem faz dois turnos
+// no mesmo dia (ex: um de manhã e outro à noite) aparecer em blocos separados
+// na lista, em vez de todas as batidas misturadas numa fileira só.
 function calcularDiaEfetivo(lista){
 const estados = new Map();
 const ordenados = lista.slice().sort((a,b) => new Date(a.criado_em) - new Date(b.criado_em));
 ordenados.forEach(r => {
 const chave = normalizarNome(r.nome) + "|" + r.loja;
-if (!estados.has(chave)) estados.set(chave, { turnoDia: null });
+if (!estados.has(chave)) estados.set(chave, { turnoDia: null, turnoNum: 0 });
 const st = estados.get(chave);
 const diaProprio = diaBrasilia(r.criado_em);
 if (r.tipo === "Chegada"){
+st.turnoNum++;
 st.turnoDia = diaProprio;
 r.diaEfetivo = diaProprio;
+r.turnoId = st.turnoNum;
 } else if (r.tipo === "Inicio do intervalo" || r.tipo === "Fim do intervalo"){
 r.diaEfetivo = st.turnoDia || diaProprio;
+r.turnoId = st.turnoNum;
 } else if (r.tipo === "Saida" || r.tipo === "Saída"){
 r.diaEfetivo = st.turnoDia || diaProprio;
+r.turnoId = st.turnoNum;
 st.turnoDia = null;
 } else {
 r.diaEfetivo = diaProprio;
+r.turnoId = st.turnoNum;
 }
 });
 }
