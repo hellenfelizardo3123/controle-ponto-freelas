@@ -131,6 +131,7 @@ line-height:1;
 .stat.total .n, .stat.total .l{color:#fff8f2;}
 
 .toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}
+.lista-semana{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
 .tabs{display:flex;gap:6px;flex-wrap:wrap;}
 .tab{
 font-family:'Inter',sans-serif;
@@ -478,6 +479,14 @@ Atualizar
 </div>
 </div>
 
+<div class="lista-semana">
+<div class="pay-tabs" id="listaSemanaTabs" role="tablist" aria-label="Escolher semana das batidas">
+<button class="paytab" data-semana="atual" role="tab" aria-pressed="true">Semana atual</button>
+<button class="paytab" data-semana="passada" role="tab" aria-pressed="false">Semana passada</button>
+</div>
+<p class="pay-periodo" id="listaPeriodo">—</p>
+</div>
+
 <div id="conteudo">
 <div class="loading">Carregando os registros…</div>
 </div>
@@ -540,6 +549,7 @@ let marcadosPagos = new Set();
 
 let registrosPagamento = [];
 let semanaAtivaPay = "atual";
+let semanaAtivaLista = "atual";
 
 const elConteudo = document.getElementById("conteudo");
 const elDataHoje = document.getElementById("dataHoje");
@@ -603,16 +613,26 @@ else { nomeAtivo = ""; }
 }
 
 function renderLista(){
-const filtrados = registros.filter(r =>
+// Mesmo filtro de semana que tem no Pagamento (semana atual / semana
+// passada), pra achar mais facil as batidas de uma semana especifica.
+const cicloN = cicloAtual();
+const cicloLista = semanaAtivaLista === "atual" ? cicloN : cicloN - 1;
+const inicioSemanaLista = inicioCicloMs(cicloLista);
+const fimSemanaLista = inicioCicloMs(cicloLista + 1);
+document.getElementById("listaPeriodo").textContent = formatDiaMes(inicioSemanaLista) + " a " + formatDiaMes(fimSemanaLista - 1);
+
+const filtrados = registros.filter(r => {
+const t = new Date(r.criado_em).getTime();
+return t >= inicioSemanaLista && t < fimSemanaLista &&
 (!lojaAtiva || r.loja === lojaAtiva) &&
-(!nomeAtivo || normalizarNome(r.nome) === normalizarNome(nomeAtivo))
-);
+(!nomeAtivo || normalizarNome(r.nome) === normalizarNome(nomeAtivo));
+});
 
 if (filtrados.length === 0){
 const partes = [];
 if (lojaAtiva) partes.push("em " + NOME_EXIBICAO[lojaAtiva]);
 if (nomeAtivo) partes.push("de " + nomeAtivo);
-elConteudo.innerHTML = '<div class="empty">Nenhum registro ainda' + (partes.length ? " " + partes.join(" ") : "") + '.</div>';
+elConteudo.innerHTML = '<div class="empty">Nenhum registro ainda' + (partes.length ? " " + partes.join(" ") : "") + " nessa semana" + '.</div>';
 return;
 }
 
@@ -1056,11 +1076,19 @@ desmarcarPago(btn.dataset.nome, btn.dataset.loja, semanaInicioStr);
 });
 }
 
-document.querySelectorAll(".paytab").forEach(btn => {
+document.querySelectorAll("#payTabs .paytab").forEach(btn => {
 btn.addEventListener("click", () => {
 semanaAtivaPay = btn.dataset.semana;
-document.querySelectorAll(".paytab").forEach(b => b.setAttribute("aria-pressed", b === btn ? "true" : "false"));
+document.querySelectorAll("#payTabs .paytab").forEach(b => b.setAttribute("aria-pressed", b === btn ? "true" : "false"));
 renderPagamento();
+});
+});
+
+document.querySelectorAll("#listaSemanaTabs .paytab").forEach(btn => {
+btn.addEventListener("click", () => {
+semanaAtivaLista = btn.dataset.semana;
+document.querySelectorAll("#listaSemanaTabs .paytab").forEach(b => b.setAttribute("aria-pressed", b === btn ? "true" : "false"));
+renderLista();
 });
 });
 
