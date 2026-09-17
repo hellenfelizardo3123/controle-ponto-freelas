@@ -655,21 +655,29 @@ html += '<div class="day"><span class="day-label">' + rotuloDia(dia, hojeStr, on
 // Um bloco por turno (nao mais um bloco por pessoa): quem bateu ponto duas
 // vezes no mesmo dia (dois turnos) ganha duas fileiras separadas, cada uma
 // só com as batidas daquele turno.
+// Agrupa pelo nome "normalizado" (sem diferenciar maiuscula/minuscula e sem
+// espaco a mais) — assim, se a pessoa digitou o nome um pouco diferente em
+// uma batida (ex: "Gustavo isaac" numa e "Gustavo Isaac" noutra), continua
+// juntando tudo na mesma fileira em vez de espalhar em fileiras separadas.
 const porPessoa = new Map();
 porDia.get(dia).forEach(r => {
-const chave = r.nome + "|" + r.loja + "|" + (r.turnoId || 0);
-if (!porPessoa.has(chave)) porPessoa.set(chave, { nome: r.nome, loja: r.loja, registros: [] });
+const chave = normalizarNome(r.nome) + "|" + r.loja + "|" + (r.turnoId || 0);
+if (!porPessoa.has(chave)) porPessoa.set(chave, { nome: r.nome, nomes: [], loja: r.loja, registros: [] });
+porPessoa.get(chave).nomes.push((r.nome || "").trim());
 porPessoa.get(chave).registros.push(r);
 });
 
 const pessoas = Array.from(porPessoa.values());
-pessoas.forEach(p => p.registros.sort((a,b) => new Date(a.criado_em) - new Date(b.criado_em)));
+pessoas.forEach(p => {
+p.registros.sort((a,b) => new Date(a.criado_em) - new Date(b.criado_em));
+p.nome = nomeMaisBonito(p.nomes);
+});
 
 // Numera os turnos de cada pessoa nesse dia (1º turno, 2º turno...), só
 // pra exibir a etiqueta quando ela realmente tiver mais de um turno.
 const gruposPorPessoa = new Map();
 pessoas.forEach(p => {
-const k = p.nome + "|" + p.loja;
+const k = normalizarNome(p.nome) + "|" + p.loja;
 if (!gruposPorPessoa.has(k)) gruposPorPessoa.set(k, []);
 gruposPorPessoa.get(k).push(p);
 });
@@ -779,6 +787,21 @@ return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 function normalizarNome(n){
 return String(n || "").trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/\s+/g, " ");
+}
+
+// Quando a mesma pessoa aparece com grafias diferentes num grupo (ex: "joao"
+// numa batida e "João" noutra), escolhe pra exibir a que estiver escrita
+// "Com Cada Palavra Maiuscula" (a mais arrumada); se nenhuma estiver assim,
+// usa a grafia que mais se repetiu.
+function nomeMaisBonito(nomes){
+if (!nomes || !nomes.length) return "";
+const bonito = nomes.find(n => /^[A-ZÀ-Ý][a-zà-ÿ']*(\s[A-ZÀ-Ý][a-zà-ÿ']*)*$/.test(n));
+if (bonito) return bonito;
+const contagem = new Map();
+nomes.forEach(n => contagem.set(n, (contagem.get(n) || 0) + 1));
+let melhor = nomes[0], max = 0;
+contagem.forEach((c, n) => { if (c > max){ max = c; melhor = n; } });
+return melhor;
 }
 
 // --- QR code da semana (mesma fórmula do index.html: o código muda toda
