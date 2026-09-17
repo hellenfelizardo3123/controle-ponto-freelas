@@ -942,45 +942,48 @@ r.turnoId = st.turnoNum;
 // uma batida que não faz sentido no estado atual (ex: 2ª Chegada sem Saída no meio)
 // é simplesmente ignorada, em vez de contar como "incompleta" e bagunçar a conta.
 function calcularPagamentos(lista){
-const porPessoa = new Map();
-const estados = new Map();
-const ordenados = lista.slice().sort((a,b) => new Date(a.criado_em) - new Date(b.criado_em));
-ordenados.forEach(r => {
-const chave = normalizarNome(r.nome) + "|" + r.loja;
-if (!porPessoa.has(chave)) porPessoa.set(chave, { nome: (r.nome || "").trim(), loja: r.loja, ms: 0, incompletos: 0 });
-if (!estados.has(chave)) estados.set(chave, { status: "fechado" });
-const p = porPessoa.get(chave);
-const st = estados.get(chave);
-const t = new Date(r.criado_em).getTime();
-if (r.tipo === "Chegada"){
-if (st.status === "fechado"){ st.status = "aberto"; st.inicioTurno = t; st.pausaMs = 0; }
-// já tinha turno aberto: batida repetida, ignora
-} else if (r.tipo === "Inicio do intervalo"){
-if (st.status === "aberto"){ st.status = "intervalo"; st.inicioIntervalo = t; }
-// sem turno aberto ou já em intervalo: batida repetida/fora de ordem, ignora
-} else if (r.tipo === "Fim do intervalo"){
-if (st.status === "intervalo"){ st.pausaMs += (t - st.inicioIntervalo); st.status = "aberto"; }
-// sem intervalo aberto: batida repetida/fora de ordem, ignora
-} else if (r.tipo === "Saida" || r.tipo === "Saída"){
-if (st.status === "aberto" || st.status === "intervalo"){
-const bruto = t - st.inicioTurno;
-const liquido = Math.max(0, bruto - (st.pausaMs || 0));
-p.ms += liquido;
-st.status = "fechado";
-}
-// já estava fechado: Saída repetida, ignora (não conta de novo)
-}
-});
-estados.forEach((st, chave) => {
-if (st.status !== "fechado"){
-const p = porPessoa.get(chave);
-if (p) p.incompletos++;
-}
-});
-return porPessoa;
+  const porPessoa = new Map();
+  const estados = new Map();
+  const ordenados = lista.slice().sort((a,b) => new Date(a.criado_em) - new Date(b.criado_em));
+  const MAX_TURNO_MS = 16 * 60 * 60 * 1000;
+  ordenados.forEach(r => {
+    const chave = normalizarNome(r.nome) + "|" + r.loja;
+    if (!porPessoa.has(chave)) porPessoa.set(chave, { nome: (r.nome || "").trim(), loja: r.loja, ms: 0, incompletos: 0 });
+    if (!estados.has(chave)) estados.set(chave, { status: "fechado" });
+    const p = porPessoa.get(chave);
+    const st = estados.get(chave);
+    const t = new Date(r.criado_em).getTime();
+    if (r.tipo === "Chegada"){
+      if (st.status === "fechado"){ st.status = "aberto"; st.inicioTurno = t; st.pausaMs = 0; }
+      else if (diaBrasilia(t) !== diaBrasilia(st.inicioTurno)){ p.incompletos++; st.status = "aberto"; st.inicioTurno = t; st.pausaMs = 0; }
+      // turno aberto no mesmo dia: batida repetida, ignora. Turno aberto em outro dia: esqueceram a saida, descarta e comeca turno novo.
+    } else if (r.tipo === "Inicio do intervalo"){
+      if (st.status === "aberto"){ st.status = "intervalo"; st.inicioIntervalo = t; }
+      // sem turno aberto ou ja em intervalo: batida repetida/fora de ordem, ignora
+    } else if (r.tipo === "Fim do intervalo"){
+      if (st.status === "intervalo"){ st.pausaMs += (t - st.inicioIntervalo); st.status = "aberto"; }
+      // sem intervalo aberto: batida repetida/fora de ordem, ignora
+    } else if (r.tipo === "Saida" || r.tipo === "Saída"){
+      if (st.status === "aberto" || st.status === "intervalo"){
+        const bruto = t - st.inicioTurno;
+        const liquido = Math.max(0, bruto - (st.pausaMs || 0));
+        if (liquido > MAX_TURNO_MS){ p.incompletos++; }
+        else { p.ms += liquido; }
+        st.status = "fechado";
+      }
+      // ja estava fechado: Saida repetida, ignora (nao conta de novo)
+    }
+  });
+  estados.forEach((st, chave) => {
+    if (st.status !== "fechado"){
+      const p = porPessoa.get(chave);
+      if (p) p.incompletos++;
+    }
+  });
+  return porPessoa;
 }
 
-// Guarda quem já foi marcado como pago (nome + loja + semana), pra lembrar
+  // Guarda quem já foi marcado como pago (nome + loja + semana), pra lembrar
 // mesmo depois de fechar e abrir o painel de novo. Fica salvo no Supabase,
 // na tabela pagamentos_marcados.
 async function carregarMarcados(){
