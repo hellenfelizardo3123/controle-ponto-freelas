@@ -89,8 +89,8 @@ const formulario = document.getElementById("formulario");
 const mensagemEl = document.getElementById("mensagem");
 
 const lojaValida = !!codigoLoja && !!lojas[codigoLoja];
-const codigoEsperado = codigoDoCiclo(cicloAtual());
-const codigoValido = codigoUrl === codigoEsperado;
+function horaBrasilia(ms){ return new Date(ms - 3 * 3600 * 1000).getUTCHours(); } const cicloHoje = cicloAtual(); const codigosValidos = [codigoDoCiclo(cicloHoje)]; if (horaBrasilia(Date.now()) < 2){ codigosValidos.push(codigoDoCiclo(cicloHoje - 1)); } const codigoEsperado = codigoDoCiclo(cicloHoje);
+const codigoValido = codigosValidos.includes(codigoUrl);
 
 function nomeLojaBonito() {
 return "Cidadão do Mundo " + (nomesExibicao[codigoLoja] || lojas[codigoLoja]);
