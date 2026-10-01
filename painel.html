@@ -903,39 +903,40 @@ janela.document.write(conteudo);
 janela.document.close();
 }
 
-// Descobre o "dia efetivo" de cada batida: quando o turno começa num dia e
-// termina depois da meia-noite (ex: entra 18:00, sai 00:30), todas as batidas
-// desse turno (Chegada, intervalo, Saída) ficam marcadas com o dia em que o
-// turno começou — assim a lista mostra o turno inteiro junto, em vez da Saída
-// aparecer sozinha no dia seguinte.
-// Também numera os turnos de cada pessoa (turnoId), pra quem faz dois turnos
-// no mesmo dia (ex: um de manhã e outro à noite) aparecer em blocos separados
-// na lista, em vez de todas as batidas misturadas numa fileira só.
-function calcularDiaEfetivo(lista){
-const estados = new Map();
-const ordenados = lista.slice().sort((a,b) => new Date(a.criado_em) - new Date(b.criado_em));
-ordenados.forEach(r => {
-const chave = normalizarNome(r.nome) + "|" + r.loja;
-if (!estados.has(chave)) estados.set(chave, { turnoDia: null, turnoNum: 0 });
-const st = estados.get(chave);
-const diaProprio = diaBrasilia(r.criado_em);
-if (r.tipo === "Chegada"){
-st.turnoNum++;
-st.turnoDia = diaProprio;
-r.diaEfetivo = diaProprio;
-r.turnoId = st.turnoNum;
-} else if (r.tipo === "Inicio do intervalo" || r.tipo === "Fim do intervalo"){
-r.diaEfetivo = st.turnoDia || diaProprio;
-r.turnoId = st.turnoNum;
-} else if (r.tipo === "Saida" || r.tipo === "Saída"){
-r.diaEfetivo = st.turnoDia || diaProprio;
-r.turnoId = st.turnoNum;
-st.turnoDia = null;
-} else {
-r.diaEfetivo = diaProprio;
-r.turnoId = st.turnoNum;
-}
-});
+// Descobre o "dia efetivo" de cada batida: quando um turno termina depois
+  // da meia-noite (ex: entra 18:00, sai 00:30), todas as batidas desse turno
+  // (Chegada, intervalo, Saida) ficam marcadas com o dia em que o turno
+  // TERMINOU (o dia da Saida) — assim quem saiu de madrugada aparece em
+  // "Hoje", e nao em "Ontem". Turno ainda aberto (sem Saida) usa o dia da
+  // Chegada, por enquanto.
+  // Tambem numera os turnos de cada pessoa (turnoId), pra quem faz dois turnos
+  // no mesmo dia (ex: um de manha e outro a noite) aparecer em blocos separados
+  // na lista, em vez de todas as batidas misturadas numa fileira so.
+  function calcularDiaEfetivo(lista){
+  const estados = new Map();
+  const turnos = [];
+  const ordenados = lista.slice().sort((a,b) => new Date(a.criado_em) - new Date(b.criado_em));
+  ordenados.forEach(r => {
+    const chave = normalizarNome(r.nome) + "|" + r.loja;
+    if (!estados.has(chave)) estados.set(chave, { turnoAtual: null, turnoNum: 0 });
+    const st = estados.get(chave);
+    if (r.tipo === "Chegada"){
+      st.turnoNum++;
+      st.turnoAtual = { registros: [r] };
+      turnos.push(st.turnoAtual);
+      r.turnoId = st.turnoNum;
+    } else {
+      if (!st.turnoAtual){ st.turnoNum++; st.turnoAtual = { registros: [] }; turnos.push(st.turnoAtual); }
+      st.turnoAtual.registros.push(r);
+      r.turnoId = st.turnoNum;
+      if (r.tipo === "Saida" || r.tipo === "Saída") st.turnoAtual = null;
+    }
+  });
+  turnos.forEach(turno => {
+    const ultimo = turno.registros[turno.registros.length - 1];
+    const diaDoTurno = diaBrasilia(ultimo.criado_em);
+    turno.registros.forEach(r => { r.diaEfetivo = diaDoTurno; });
+  });
 }
 
 // Tolerante a batida repetida/fora de ordem (ex: alguém tocou duas vezes sem querer):
