@@ -559,7 +559,7 @@ const tabs = Array.from(document.querySelectorAll(".tab"));
 const btnImprimirQR = document.getElementById("btnImprimirQR");
 const filtroNomeEl = document.getElementById("filtroNome");
 
-function diaBrasilia(isoOuMs){
+function inicioDiaBrasiliaMs(diaStr){ const p = diaStr.split("-"); const y = Number(p[0]), m = Number(p[1]), d = Number(p[2]); return Date.UTC(y, m - 1, d) + 3 * 3600 * 1000; } function diaBrasilia(isoOuMs){
 const ms = typeof isoOuMs === "string" ? new Date(isoOuMs).getTime() : isoOuMs;
 const d = new Date(ms - 3 * 3600 * 1000);
 return d.getUTCFullYear() + "-" + String(d.getUTCMonth()+1).padStart(2,"0") + "-" + String(d.getUTCDate()).padStart(2,"0");
@@ -623,7 +623,7 @@ document.getElementById("listaPeriodo").textContent = formatDiaMes(inicioSemanaL
 
 const filtrados = registros.filter(r => {
 const t = new Date(r.criado_em).getTime();
-return t >= inicioSemanaLista && t < fimSemanaLista &&
+return (r.diaEfetivo ? inicioDiaBrasiliaMs(r.diaEfetivo) : t) >= inicioSemanaLista && (r.diaEfetivo ? inicioDiaBrasiliaMs(r.diaEfetivo) : t) < fimSemanaLista &&
 (!lojaAtiva || r.loja === lojaAtiva) &&
 (!nomeAtivo || normalizarNome(r.nome) === normalizarNome(nomeAtivo));
 });
@@ -1039,7 +1039,7 @@ const { data, error } = await sb
 .order("criado_em", { ascending: true })
 .limit(5000);
 if (error) throw error;
-registrosPagamento = data || [];
+registrosPagamento = data || []; calcularDiaEfetivo(registrosPagamento);
 renderPagamento();
 } catch(e){
 document.getElementById("payConteudo").innerHTML = '<div class="error" style="padding:16px;">Não consegui calcular agora.<br>' + escapeHtml(e && e.message ? e.message : "") + '</div>';
@@ -1056,7 +1056,7 @@ const semanaInicioStr = diaBrasilia(inicio);
 
 const doPeriodo = registrosPagamento.filter(r => {
 const t = new Date(r.criado_em).getTime();
-return t >= inicio && t < fim;
+return (r.diaEfetivo ? inicioDiaBrasiliaMs(r.diaEfetivo) : t) >= inicio && (r.diaEfetivo ? inicioDiaBrasiliaMs(r.diaEfetivo) : t) < fim;
 });
 const mapa = calcularPagamentos(doPeriodo);
 const linhas = Array.from(mapa.values()).sort((a,b) => a.nome.localeCompare(b.nome, "pt-BR"));
